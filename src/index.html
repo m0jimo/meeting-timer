@@ -1,0 +1,2342 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>MEETING TIMER</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com"/>
+    <link href="https://fonts.googleapis.com/css2?family=VT323&family=Share+Tech+Mono&display=swap" rel="stylesheet"/>
+    <style>
+        /* ═══════════════════════════════════════════════════════════════
+           DOS / TUI THEME  –  Norton / Volkov Commander Aesthetic
+           ═══════════════════════════════════════════════════════════════ */
+        :root {
+            --bg: #000080;
+            --panel-bg: #000080;
+            --panel-border: #00aaff;
+            --panel-title: #ffff00;
+            --row-bg: #000080;
+            --row-alt: #000060;
+            --row-hover: #005500;
+            --row-active: #00aa00;
+            --row-active-fg: #000000;
+            --row-selected: #005588;
+            --row-selected-fg: #ffffff;
+            --row-fg: #aaaaaa;
+            --row-fg-bright: #ffffff;
+            --header-bg: #00aaff;
+            --header-fg: #000000;
+            --status-bg: #00aaff;
+            --status-fg: #000000;
+            --btn-bg: #aaaaaa;
+            --btn-fg: #000000;
+            --btn-hover-bg: #ffffff;
+            --btn-active-bg: #ffff00;
+            --input-bg: #000000;
+            --input-fg: #00ff00;
+            --input-border: #aaaaaa;
+            --dialog-bg: #000080;
+            --dialog-border: #ffff00;
+            --accent-green: #00ff00;
+            --accent-yellow: #ffff00;
+            --accent-red: #ff5555;
+            --accent-cyan: #55ffff;
+            --accent-orange: #ffaa00;
+            --font-main: 'VT323', monospace;
+            --font-mono: 'Share Tech Mono', monospace;
+        }
+
+        *, *::before, *::after {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            background: var(--bg);
+            color: var(--row-fg-bright);
+            font-family: var(--font-main);
+            font-size: 18px;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            padding: 8px;
+            user-select: none;
+            overflow: hidden;
+        }
+
+        /* ── WINDOW FRAME ── */
+        .window {
+            border: 2px solid var(--panel-border);
+            flex: 1;
+            min-height: 0;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .window-titlebar {
+            background: var(--header-bg);
+            color: var(--header-fg);
+            padding: 2px 8px;
+            font-size: 20px;
+            letter-spacing: 2px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 2px solid var(--panel-border);
+            flex-shrink: 0;
+        }
+
+        .window-titlebar .title {
+            font-weight: bold;
+        }
+
+        .window-titlebar .clock {
+            font-family: var(--font-mono);
+            font-size: 16px;
+        }
+
+        /* ── TOOLBAR ── */
+        .toolbar {
+            background: var(--row-alt);
+            border-bottom: 1px solid var(--panel-border);
+            padding: 4px 8px;
+            display: flex;
+            gap: 6px;
+            align-items: center;
+            flex-wrap: wrap;
+            flex-shrink: 0;
+        }
+
+        .btn {
+            font-family: var(--font-main);
+            font-size: 18px;
+            background: var(--btn-bg);
+            color: var(--btn-fg);
+            border: none;
+            padding: 1px 10px;
+            cursor: pointer;
+            white-space: nowrap;
+            letter-spacing: 1px;
+        }
+
+        .btn:hover {
+            background: var(--btn-hover-bg);
+        }
+
+        .btn:active {
+            background: var(--btn-active-bg);
+        }
+
+        .btn.danger {
+            background: var(--accent-red);
+            color: #fff;
+        }
+
+        .btn.danger:hover {
+            background: #ff8888;
+        }
+
+        .btn.success {
+            background: var(--accent-green);
+            color: #000;
+        }
+
+        .btn.success:hover {
+            background: #55ff55;
+        }
+
+        .btn.warn {
+            background: var(--accent-yellow);
+            color: #000;
+        }
+
+        .btn.warn:hover {
+            background: #ffff88;
+        }
+
+        .btn.info {
+            background: var(--accent-cyan);
+            color: #000;
+        }
+
+        .btn.info:hover {
+            background: #88ffff;
+        }
+
+        .btn:disabled {
+            background: #555;
+            color: #888;
+            cursor: default;
+            pointer-events: none;
+        }
+
+        .toolbar-sep {
+            color: var(--panel-border);
+            font-size: 20px;
+        }
+
+        /* ── MAIN CONTENT ── */
+        .content {
+            flex: 1;
+            min-height: 0;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        /* ── PAGE ── */
+        .page {
+            display: none;
+            flex: 1;
+            min-height: 0;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .page.active {
+            display: flex;
+        }
+
+        /* ═══════════════════════════════════════════════════════════════
+           PAGE LAYOUT  — column of rows
+           ═══════════════════════════════════════════════════════════════ */
+        #page-main {
+            flex-direction: column;
+        }
+
+        /* Top row: Teams + Sessions, fixed ~50% height */
+        .main-top {
+            display: flex;
+            flex: 1;
+            overflow: hidden;
+            min-height: 0;
+            border-bottom: 2px solid var(--panel-border);
+        }
+
+        /* Bottom row: Members + Stats (browse mode) OR Recording (recording mode) */
+        .main-bottom {
+            display: flex;
+            flex: 1;
+            overflow: hidden;
+            min-height: 0;
+        }
+
+        /* ── Left panel — teams ── */
+        .teams-panel {
+            width: 220px;
+            min-width: 140px;
+            border-right: 2px solid var(--panel-border);
+            display: flex;
+            flex-direction: column;
+            flex-shrink: 0;
+        }
+
+        .panel-header {
+            background: var(--header-bg);
+            color: var(--header-fg);
+            padding: 2px 10px;
+            font-size: 17px;
+            letter-spacing: 1px;
+            border-bottom: 1px solid var(--panel-border);
+            flex-shrink: 0;
+        }
+
+        .teams-list {
+            flex: 1;
+            overflow-y: auto;
+        }
+
+        .team-item {
+            padding: 4px 10px;
+            cursor: pointer;
+            border-bottom: 1px solid #001050;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .team-item:hover {
+            background: var(--row-hover);
+        }
+
+        .team-item.selected {
+            background: var(--row-selected);
+            color: var(--row-selected-fg);
+        }
+
+        .team-item.cursor:not(.selected) {
+            outline: 1px dashed var(--accent-cyan);
+            outline-offset: -1px;
+        }
+
+        .team-item .team-name {
+            flex: 1;
+            font-size: 19px;
+        }
+
+        .team-item .team-meta {
+            font-size: 14px;
+            color: var(--accent-cyan);
+            font-family: var(--font-mono);
+        }
+
+        .team-item.selected .team-meta {
+            color: var(--accent-yellow);
+        }
+
+        /* ── Sessions panel — peer column, hidden when no team selected ── */
+        .sessions-panel {
+            width: 220px;
+            min-width: 140px;
+            border-right: 2px solid var(--panel-border);
+            display: flex;
+            flex-direction: column;
+            flex-shrink: 0;
+        }
+
+        .sessions-panel.hidden {
+            display: none;
+        }
+
+        .sessions-list {
+            flex: 1;
+            overflow-y: auto;
+        }
+
+        .session-item {
+            padding: 3px 10px;
+            cursor: pointer;
+            border-bottom: 1px solid #001050;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-family: var(--font-mono);
+            font-size: 16px;
+            white-space: nowrap;
+        }
+
+        .session-item:hover {
+            background: var(--row-hover);
+        }
+
+        .session-item.selected {
+            background: var(--row-selected);
+            color: var(--row-selected-fg);
+        }
+
+        .session-item.cursor:not(.selected) {
+            outline: 1px dashed var(--accent-cyan);
+            outline-offset: -1px;
+        }
+
+        .session-item .session-date {
+            flex: 1;
+        }
+
+        .session-item .session-meta {
+            font-size: 13px;
+            color: var(--accent-cyan);
+        }
+
+        .session-item.selected .session-meta {
+            color: var(--accent-yellow);
+        }
+
+
+        /* new-date row */
+        .session-item.session-new {
+            color: var(--accent-green);
+        }
+
+        /* inline date input inside the new-date row */
+        .session-date-input {
+            background: var(--input-bg);
+            color: var(--input-fg);
+            border: 1px solid var(--accent-green);
+            font-family: var(--font-mono);
+            font-size: 15px;
+            padding: 0 4px;
+            width: 110px;
+            outline: none;
+        }
+
+        /* ── Members panel (bottom-left in browse mode) ── */
+        .members-panel {
+            width: 260px;
+            min-width: 160px;
+            min-height: 0;
+            border-right: 2px solid var(--panel-border);
+            display: flex;
+            flex-direction: column;
+            flex-shrink: 0;
+            overflow: hidden;
+        }
+
+        .members-list {
+            flex: 1;
+            overflow-y: auto;
+        }
+
+        .member-item {
+            padding: 3px 10px;
+            cursor: pointer;
+            border-bottom: 1px solid #001050;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .member-item:hover {
+            background: var(--row-hover);
+        }
+
+        .member-item.selected {
+            background: var(--row-selected);
+            color: var(--row-selected-fg);
+        }
+
+        .member-item.cursor:not(.selected) {
+            outline: 1px dashed var(--accent-cyan);
+            outline-offset: -1px;
+        }
+
+        .member-name {
+            flex: 1;
+            font-size: 18px;
+        }
+
+        .member-item.all-users {
+            border-bottom: 2px solid var(--panel-border);
+            color: var(--accent-cyan);
+        }
+
+        .member-item.all-users .member-name {
+            font-style: italic;
+        }
+
+        /* ── Stats panel (bottom-right in browse mode) ── */
+        .stats-panel {
+            flex: 1;
+            min-height: 0;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        /* ── Recording zone (top-right panel, shown when date selected) ── */
+        .recording-zone {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            border-left: 2px solid var(--panel-border);
+        }
+
+        .recording-zone.hidden {
+            display: none;
+        }
+
+        .recording-zone:not(.hidden) {
+            border: 2px solid var(--panel-border);
+        }
+
+        .stats-content {
+            flex: 1;
+            min-height: 0;
+            padding: 10px 12px;
+            overflow-y: auto;
+        }
+
+        .stats-user-title {
+            color: var(--accent-yellow);
+            font-size: 22px;
+            margin-bottom: 8px;
+            border-bottom: 1px solid var(--panel-border);
+            padding-bottom: 4px;
+        }
+
+        .stats-summary {
+            display: flex;
+            gap: 20px;
+            margin-bottom: 12px;
+            flex-wrap: wrap;
+        }
+
+        .stat-box {
+            border: 1px solid var(--panel-border);
+            padding: 6px 12px;
+            min-width: 120px;
+            text-align: center;
+            background: #000050;
+        }
+
+        .stat-box .lbl {
+            font-size: 14px;
+            color: var(--accent-cyan);
+            display: block;
+        }
+
+        .stat-box .val {
+            font-size: 24px;
+            color: var(--accent-yellow);
+            display: block;
+            font-family: var(--font-mono);
+        }
+
+        .stats-sessions-title {
+            color: var(--accent-cyan);
+            font-size: 16px;
+            margin-bottom: 6px;
+            letter-spacing: 1px;
+        }
+
+        .stats-sessions-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 16px;
+        }
+
+        .stats-sessions-table th {
+            background: var(--header-bg);
+            color: var(--header-fg);
+            padding: 2px 8px;
+            text-align: left;
+            border-right: 1px solid #0066aa;
+            font-size: 15px;
+        }
+
+        .stats-sessions-table td {
+            padding: 2px 8px;
+            border-bottom: 1px solid #001050;
+            border-right: 1px solid #001050;
+            color: var(--row-fg-bright);
+            font-family: var(--font-mono);
+            font-size: 14px;
+        }
+
+        .stats-sessions-table tr:nth-child(even) td {
+            background: var(--row-alt);
+        }
+
+        .stats-placeholder {
+            color: #555;
+            font-size: 20px;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .recording-info-bar {
+            background: #000050;
+            border-bottom: 1px solid var(--panel-border);
+            padding: 3px 8px;
+            display: flex;
+            gap: 14px;
+            align-items: center;
+            flex-shrink: 0;
+        }
+
+        .recording-info-bar .rec-stat .lbl {
+            font-size: 12px;
+            color: var(--accent-cyan);
+            display: block;
+        }
+
+        .recording-info-bar .rec-stat .val {
+            font-size: 17px;
+            color: var(--accent-yellow);
+            font-family: var(--font-mono);
+            display: block;
+        }
+
+        .recording-table-wrap {
+            flex: 1;
+            overflow: auto;
+        }
+
+        /* ── Table ── */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 18px;
+        }
+
+        thead tr {
+            background: var(--header-bg);
+            color: var(--header-fg);
+            position: sticky;
+            top: 0;
+            z-index: 1;
+        }
+
+        thead th {
+            padding: 3px 10px;
+            text-align: left;
+            border-right: 1px solid #0066aa;
+            font-size: 17px;
+            letter-spacing: 1px;
+            white-space: nowrap;
+        }
+
+        thead th:last-child {
+            border-right: none;
+        }
+
+        tbody tr {
+            background: var(--row-bg);
+            border-bottom: 1px solid #001050;
+            cursor: pointer;
+        }
+
+        tbody tr:nth-child(even) {
+            background: var(--row-alt);
+        }
+
+        tbody tr:hover {
+            background: var(--row-hover);
+        }
+
+        tbody tr.row-selected {
+            background: var(--row-selected) !important;
+            color: var(--row-selected-fg) !important;
+            outline: 1px solid var(--accent-cyan);
+            outline-offset: -1px;
+        }
+
+        tbody tr.row-speaking {
+            background: var(--row-active) !important;
+            color: var(--row-active-fg) !important;
+        }
+
+        tbody tr.row-speaking td {
+            color: var(--row-active-fg) !important;
+        }
+
+        tbody tr.row-selected.row-speaking {
+            background: var(--accent-yellow) !important;
+            color: #000 !important;
+        }
+
+        tbody td {
+            padding: 3px 10px;
+            border-right: 1px solid #001050;
+            color: var(--row-fg-bright);
+            white-space: nowrap;
+        }
+
+        tbody td:last-child {
+            border-right: none;
+        }
+
+        .col-rank {
+            width: 36px;
+            text-align: right;
+            color: #888 !important;
+        }
+
+        .col-name {
+            min-width: 140px;
+        }
+
+        .col-time {
+            width: 90px;
+            text-align: right;
+            font-family: var(--font-mono);
+            font-size: 16px;
+        }
+
+        .col-pct {
+            width: 66px;
+            text-align: right;
+            font-family: var(--font-mono);
+            font-size: 16px;
+        }
+
+        .col-bool {
+            width: 60px;
+            text-align: center;
+        }
+
+        .col-bar {
+            min-width: 100px;
+        }
+
+        .col-turns {
+            width: 56px;
+            text-align: right;
+        }
+
+        .col-last {
+            width: 110px;
+            font-family: var(--font-mono);
+            font-size: 14px;
+            color: #888 !important;
+        }
+
+        .col-actions {
+            width: 70px;
+        }
+
+        .pct-bar-wrap {
+            background: #000030;
+            border: 1px solid #003060;
+            height: 13px;
+            position: relative;
+        }
+
+        .pct-bar-fill {
+            height: 100%;
+            background: var(--accent-green);
+            transition: width 0.3s;
+        }
+
+        .row-speaking .pct-bar-fill {
+            background: var(--accent-yellow);
+        }
+
+        .name-cell {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .speaking-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: var(--accent-green);
+            box-shadow: 0 0 6px var(--accent-green);
+            animation: blink 0.8s step-end infinite;
+            flex-shrink: 0;
+        }
+
+        @keyframes blink {
+            0%, 100% {
+                opacity: 1
+            }
+            50% {
+                opacity: 0
+            }
+        }
+
+        .bool-yes {
+            color: var(--accent-green);
+            font-size: 16px;
+        }
+
+        .bool-no {
+            color: #555;
+            font-size: 16px;
+        }
+
+        .row-actions {
+            display: flex;
+            gap: 3px;
+        }
+
+        .row-btn {
+            font-family: var(--font-main);
+            font-size: 15px;
+            padding: 0 5px;
+            border: none;
+            cursor: pointer;
+            background: #224422;
+            color: var(--accent-green);
+        }
+
+        .row-btn:hover {
+            background: #335533;
+        }
+
+        .row-btn.del {
+            background: #442222;
+            color: var(--accent-red);
+        }
+
+        .row-btn.del:hover {
+            background: #553333;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 40px;
+            color: #555;
+            font-size: 22px;
+        }
+
+
+        /* ── Panel focus indicator ── */
+        .panel-focused {
+            outline: 2px solid var(--accent-yellow);
+            outline-offset: -2px;
+        }
+
+        /* ── STATUSBAR ── */
+        .statusbar {
+            background: var(--status-bg);
+            color: var(--status-fg);
+            padding: 2px 8px;
+            display: flex;
+            justify-content: space-between;
+            font-size: 16px;
+            border-top: 2px solid var(--panel-border);
+            flex-shrink: 0;
+        }
+
+        .kb-hint {
+            font-family: var(--font-mono);
+            font-size: 13px;
+        }
+
+        .kb-hint span {
+            background: #005588;
+            color: #fff;
+            padding: 0 4px;
+            margin-right: 2px;
+        }
+
+        /* ── DIALOGS ── */
+        .overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.75);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 200;
+        }
+
+        .overlay.hidden {
+            display: none;
+        }
+
+        .dialog {
+            background: var(--dialog-bg);
+            border: 2px solid var(--dialog-border);
+            min-width: 340px;
+            max-width: 500px;
+            width: 100%;
+        }
+
+        .dialog-title {
+            background: var(--dialog-border);
+            color: #000;
+            padding: 3px 10px;
+            font-size: 20px;
+            letter-spacing: 2px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .dialog-body {
+            padding: 14px 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .dialog-body label {
+            color: var(--accent-cyan);
+            font-size: 17px;
+        }
+
+        .dialog-body input[type="text"],
+        .dialog-body input[type="file"] {
+            background: var(--input-bg);
+            color: var(--input-fg);
+            border: 1px solid var(--input-border);
+            font-family: var(--font-mono);
+            font-size: 16px;
+            padding: 3px 8px;
+            width: 100%;
+            outline: none;
+        }
+
+        .dialog-body input:focus {
+            border-color: var(--accent-green);
+        }
+
+        .dialog-body input[type="file"] {
+            cursor: pointer;
+            padding: 4px;
+        }
+
+        .dialog-body .hint {
+            color: #888;
+            font-size: 14px;
+        }
+
+        .dialog-footer {
+            padding: 8px 16px;
+            display: flex;
+            gap: 8px;
+            justify-content: flex-end;
+            border-top: 1px solid #003366;
+        }
+
+        .confirm-msg {
+            color: var(--accent-yellow);
+            font-size: 18px;
+            padding: 6px 0;
+        }
+
+        /* scrollbars */
+        ::-webkit-scrollbar {
+            width: 10px;
+            height: 10px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: #000030;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #004488;
+            border: 1px solid #0066aa;
+        }
+
+        /* CRT scanlines */
+        body::after {
+            content: '';
+            position: fixed;
+            inset: 0;
+            pointer-events: none;
+            background: repeating-linear-gradient(
+                    to bottom,
+                    transparent 0px, transparent 2px,
+                    rgba(0, 0, 0, 0.07) 2px, rgba(0, 0, 0, 0.07) 4px
+            );
+            z-index: 999;
+        }
+    </style>
+</head>
+<body>
+
+<!-- ══ MAIN WINDOW ═══════════════════════════════════════════════════ -->
+<div class="window">
+
+    <div class="window-titlebar">
+        <span class="title"
+              id="titlebar-text">╔═ MEETING TIMER ═╗  Team management &amp; speaking time tracker</span>
+        <span class="clock" id="clock">00:00:00</span>
+    </div>
+
+    <!-- ── TOOLBAR ── -->
+    <div class="toolbar" id="toolbar-main">
+        <button class="btn success" onclick="openAddTeamDialog()">[ F5 New Team ]</button>
+        <button class="btn" onclick="openAddMemberDialog()">[ F6 Add Member ]</button>
+        <span class="toolbar-sep">│</span>
+        <button class="btn" id="btn-stop-speaker" onclick="stopCurrentSpeaker()" disabled>[ F8 Stop Speaking ]</button>
+        <button class="btn danger" id="btn-reset-session" onclick="confirmResetSession()" disabled>[ F10 Reset Session
+            ]
+        </button>
+        <span class="toolbar-sep">│</span>
+        <button class="btn info" onclick="exportData()">[ Export ]</button>
+        <button class="btn info" onclick="openImportDialog()">[ Import ]</button>
+        <span class="toolbar-sep">│</span>
+        <button class="btn danger" onclick="confirmClearAll()">[ Clear All ]</button>
+    </div>
+
+    <div class="content">
+
+        <!-- ══════════ PAGE — MAIN ══════════ -->
+        <div class="page active" id="page-main">
+
+            <!-- Top row: Teams | Sessions | Recording (recording shown when date selected) -->
+            <div class="main-top">
+
+                <div class="teams-panel" id="panel-teams">
+                    <div class="panel-header">══ TEAMS ══</div>
+                    <div class="teams-list" id="teams-list"></div>
+                </div>
+
+                <div class="sessions-panel hidden" id="panel-sessions">
+                    <div class="panel-header" id="sessions-panel-header">══ SESSIONS ══</div>
+                    <div class="sessions-list" id="sessions-list"></div>
+                </div>
+
+                <div class="recording-zone hidden" id="recording-zone">
+                    <div class="panel-header" id="recording-zone-header">══ RECORDING ══════════════════════</div>
+                    <div class="recording-info-bar" id="recording-info-bar"></div>
+                    <div class="recording-table-wrap">
+                        <table>
+                            <thead>
+                            <tr>
+                                <th class="col-rank">#</th>
+                                <th class="col-name">NAME</th>
+                                <th class="col-time">TIME</th>
+                                <th class="col-pct">%</th>
+                                <th class="col-bar">SHARE</th>
+                                <th class="col-bool">SPOKE</th>
+                                <th class="col-turns">TURNS</th>
+                                <th class="col-last">LAST</th>
+                                <th class="col-actions"></th>
+                            </tr>
+                            </thead>
+                            <tbody id="recording-tbody"></tbody>
+                        </table>
+                    </div>
+                </div>
+
+            </div><!-- /main-top -->
+
+            <!-- Bottom row: Members + Stats (browse) OR Recording (recording mode) -->
+            <div class="main-bottom" id="main-bottom">
+
+                <div class="members-panel" id="panel-members">
+                    <div class="panel-header" id="members-panel-header">══ MEMBERS ═══════════</div>
+                    <div class="members-list" id="members-list"></div>
+                </div>
+
+                <div class="stats-panel" id="panel-stats">
+                    <div class="panel-header">══ USER STATS ════════════════════</div>
+                    <div class="stats-content" id="stats-content">
+                        <div class="stats-placeholder">[ Select a member to view stats ]</div>
+                    </div>
+                </div>
+
+            </div><!-- /main-bottom -->
+
+        </div><!-- /page-main -->
+
+    </div><!-- /content -->
+
+    <div class="statusbar">
+        <div class="kb-hint" id="kb-hints">
+            <span>F5</span>New Team &nbsp;
+            <span>F6</span>Add Member &nbsp;
+            <span>←→</span>Switch panel &nbsp;
+            <span>↑↓</span>Navigate &nbsp;
+            <span>Enter</span>Select &nbsp;
+            <span>DEL</span>Delete &nbsp;
+            <span>Esc</span>Back
+        </div>
+        <div id="statusbar-msg" style="color:var(--accent-yellow);">Ready.</div>
+        <div id="statusbar-saved" style="color:#00aa00; font-size:14px;"></div>
+    </div>
+
+</div><!-- /window -->
+
+<!-- ══ DIALOGS ════════════════════════════════════════════════════════ -->
+
+<!-- Add/Edit Team -->
+<div class="overlay hidden" id="dlg-team">
+    <div class="dialog">
+        <div class="dialog-title">
+            <span id="dlg-team-title">╔═ NEW TEAM ═╗</span>
+            <button class="btn" onclick="closeDlg('dlg-team')" style="font-size:16px;">✕</button>
+        </div>
+        <div class="dialog-body">
+            <label>Team name:</label>
+            <input type="text" id="dlg-team-input" placeholder="Backend team" maxlength="40"
+                   onkeydown="dlgKeydown(event,'dlg-team',confirmTeam)"/>
+        </div>
+        <div class="dialog-footer">
+            <button class="btn success" onclick="confirmTeam()">[ OK ]</button>
+            <button class="btn" onclick="closeDlg('dlg-team')">[ Cancel ]</button>
+        </div>
+    </div>
+</div>
+
+<!-- Add/Edit Member -->
+<div class="overlay hidden" id="dlg-member">
+    <div class="dialog">
+        <div class="dialog-title">
+            <span id="dlg-member-title">╔═ ADD MEMBER ═╗</span>
+            <button class="btn" onclick="closeDlg('dlg-member')" style="font-size:16px;">✕</button>
+        </div>
+        <div class="dialog-body">
+            <label>Member name:</label>
+            <input type="text" id="dlg-member-input" placeholder="Jane Smith" maxlength="40"
+                   onkeydown="dlgKeydown(event,'dlg-member',confirmMember)"/>
+        </div>
+        <div class="dialog-footer">
+            <button class="btn success" onclick="confirmMember()">[ OK ]</button>
+            <button class="btn" onclick="closeDlg('dlg-member')">[ Cancel ]</button>
+        </div>
+    </div>
+</div>
+
+<!-- Confirm -->
+<div class="overlay hidden" id="dlg-confirm">
+    <div class="dialog">
+        <div class="dialog-title"><span>╔═ CONFIRM ACTION ═╗</span></div>
+        <div class="dialog-body">
+            <div class="confirm-msg" id="confirm-msg">Are you sure?</div>
+        </div>
+        <div class="dialog-footer">
+            <button class="btn danger" id="confirm-yes-btn">[ YES ]</button>
+            <button class="btn" onclick="closeDlg('dlg-confirm')">[ NO ]</button>
+        </div>
+    </div>
+</div>
+
+<!-- Import -->
+<div class="overlay hidden" id="dlg-import">
+    <div class="dialog">
+        <div class="dialog-title">
+            <span>╔═ IMPORT DATA ═╗</span>
+            <button class="btn" onclick="closeDlg('dlg-import')" style="font-size:16px;">✕</button>
+        </div>
+        <div class="dialog-body">
+            <label>Select file (.json):</label>
+            <input type="file" id="dlg-import-file" accept=".json" onchange="onImportFileChange()"/>
+            <div class="hint">Import will overwrite existing data.</div>
+            <div id="import-preview" style="color:var(--accent-cyan);font-size:15px;"></div>
+        </div>
+        <div class="dialog-footer">
+            <button class="btn success" id="btn-import-confirm" onclick="confirmImport()" disabled>[ Import ]</button>
+            <button class="btn" onclick="closeDlg('dlg-import')">[ Cancel ]</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    // ═══════════════════════════════════════════════════════════════════
+    //  DATA MODEL
+    //  teams: [ { id, name, members: [ {id, name} ] } ]
+    //  sessions: { [teamId]: { [date "YYYY-MM-DD"]: [ {memberId, totalMs, turns, lastStart, lastTalkTime} ] } }
+    // ═══════════════════════════════════════════════════════════════════
+    const LS_KEY = "meeting-timer-v3";
+
+    let db = {
+        teams: [],
+        sessions: {}
+    };
+
+    // ── UI state ──
+    let selectedTeamId = null;
+    let selectedMemberId = null;
+
+    // ── Session state ──
+    let selectedDate = null;
+    let sessionSpeakerId = null;
+
+    // ── Keyboard cursor state ──
+    let teamCursor = 0;
+    let dateCursor = 0;
+    let memberCursor = 0;    // member list panel (0 = All Users, 1..N = members)
+    let recordingCursor = 0; // recording table panel
+    let focusedPanel = "teams"; // 'teams' | 'dates' | 'recording' | 'members'
+
+    // ── Misc ──
+    let editingTeamId = null;
+    let editingMemberId = null;
+    let importData = null;
+
+    // ═══════════════════════════════════════════════════════════════════
+    //  PERSISTENCE
+    // ═══════════════════════════════════════════════════════════════════
+    function loadDb() {
+        try {
+            // Try localStorage first (v3), then migrate from sessionStorage (v2)
+            let raw = localStorage.getItem(LS_KEY);
+            if (!raw) raw = sessionStorage.getItem("meeting-timer-v2");
+            if (raw) db = JSON.parse(raw);
+        } catch (e) {
+        }
+    }
+
+    function saveDb() {
+        try {
+            localStorage.setItem(LS_KEY, JSON.stringify(db));
+            showSaved();
+        } catch (e) {
+        }
+    }
+
+    let savedTimer = null;
+
+    function showSaved() {
+        const el = document.getElementById("statusbar-saved");
+        el.textContent = "Saved ✓";
+        clearTimeout(savedTimer);
+        savedTimer = setTimeout(() => el.textContent = "", 2000);
+    }
+
+    // ═══════════════════════════════════════════════════════════════════
+    //  HELPERS
+    // ═══════════════════════════════════════════════════════════════════
+    function genId() {
+        return Date.now().toString(36) + Math.random().toString(36).slice(2, 5);
+    }
+
+    function todayStr() {
+        return new Date().toISOString().slice(0, 10);
+    }
+
+    function fmtMs(ms) {
+        if (ms < 0) ms = 0;
+        const s = Math.floor(ms / 1000);
+        const h = Math.floor(s / 3600);
+        const m = Math.floor((s % 3600) / 60);
+        const ss = s % 60;
+        if (h > 0) return `${h}:${pad(m)}:${pad(ss)}`;
+        return `${pad(m)}:${pad(ss)}`;
+    }
+
+    function pad(n) {
+        return String(n).padStart(2, "0");
+    }
+
+    function fmtTime(ts) {
+        if (!ts) return "—";
+        const d = new Date(ts);
+        return d.toLocaleTimeString("en-GB", {hour: "2-digit", minute: "2-digit", second: "2-digit"});
+    }
+
+    function escHtml(s) {
+        return String(s)
+            .replace(/&/g, "&amp;").replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+    }
+
+    function setStatus(msg) {
+        document.getElementById("statusbar-msg").textContent = msg;
+    }
+
+    // ═══════════════════════════════════════════════════════════════════
+    //  TEAM / MEMBER HELPERS
+    // ═══════════════════════════════════════════════════════════════════
+    function findTeam(id) {
+        return db.teams.find(t => t.id === id);
+    }
+
+    function findMember(team, id) {
+        return team && team.members.find(m => m.id === id);
+    }
+
+    function ensureSessionRow(teamId, date, memberId) {
+        if (!db.sessions[teamId]) db.sessions[teamId] = {};
+        if (!db.sessions[teamId][date]) db.sessions[teamId][date] = [];
+        const rows = db.sessions[teamId][date];
+        let row = rows.find(r => r.memberId === memberId);
+        if (!row) {
+            row = {memberId, totalMs: 0, turns: 0, lastStart: null, lastTalkTime: null};
+            rows.push(row);
+        }
+        return row;
+    }
+
+    function getSessionRows(teamId, date) {
+        return (db.sessions[teamId] && db.sessions[teamId][date]) || [];
+    }
+
+    function getLiveMs(row) {
+        if (row.memberId === sessionSpeakerId && row.lastStart) {
+            return row.totalMs + (Date.now() - row.lastStart);
+        }
+        return row.totalMs;
+    }
+
+    function getTotalMs(teamId, date) {
+        return getSessionRows(teamId, date).reduce((s, r) => s + getLiveMs(r), 0);
+    }
+
+    function getMemberStats(teamId, memberId) {
+        const sessions = db.sessions[teamId] || {};
+        let totalMs = 0, totalTurns = 0, datesActive = [];
+        for (const [date, rows] of Object.entries(sessions)) {
+            const row = rows.find(r => r.memberId === memberId);
+            if (row && (row.totalMs > 0 || row.turns > 0)) {
+                totalMs += row.totalMs;
+                totalTurns += row.turns;
+                datesActive.push({date, ms: row.totalMs, turns: row.turns});
+            }
+        }
+        datesActive.sort((a, b) => b.date.localeCompare(a.date));
+        return {totalMs, totalTurns, datesActive};
+    }
+
+    // ═══════════════════════════════════════════════════════════════════
+    //  SESSION CONTROLS
+    // ═══════════════════════════════════════════════════════════════════
+    function stopCurrentSpeaker() {
+        if (!sessionSpeakerId) return;
+        const row = getSessionRows(selectedTeamId, selectedDate).find(r => r.memberId === sessionSpeakerId);
+        if (row && row.lastStart) {
+            row.totalMs += Date.now() - row.lastStart;
+            row.lastStart = null;
+            row.lastTalkTime = Date.now();
+        }
+        sessionSpeakerId = null;
+        document.getElementById("btn-stop-speaker").disabled = true;
+        saveDb();
+        renderRecordingInfoBar();
+        renderRecordingTable();
+    }
+
+    function startSpeaker(memberId) {
+        if (sessionSpeakerId === memberId) {
+            stopCurrentSpeaker();
+            return;
+        }
+        stopCurrentSpeaker();
+        const team = findTeam(selectedTeamId);
+        const member = findMember(team, memberId);
+        if (!member) return;
+
+        const row = ensureSessionRow(selectedTeamId, selectedDate, memberId);
+        row.lastStart = Date.now();
+        row.turns = (row.turns || 0) + 1;
+        sessionSpeakerId = memberId;
+        document.getElementById("btn-stop-speaker").disabled = false;
+        setStatus(`Speaking: ${member.name}`);
+        saveDb();
+        renderRecordingInfoBar();
+        renderRecordingTable();
+    }
+
+    function updateSessionToolbar() {
+        const hasDate = !!selectedDate;
+        document.getElementById("btn-reset-session").disabled = !hasDate;
+    }
+
+    // ═══════════════════════════════════════════════════════════════════
+    //  CRUD — TEAMS
+    // ═══════════════════════════════════════════════════════════════════
+    function addTeam(name) {
+        const team = {id: genId(), name: name.trim(), members: []};
+        db.teams.push(team);
+        selectedTeamId = team.id;
+        teamCursor = db.teams.length - 1;
+        saveDb();
+        renderMainPage();
+        setStatus(`Team added: ${name.trim()}`);
+    }
+
+    function renameTeam(id, name) {
+        const t = findTeam(id);
+        if (t) {
+            t.name = name.trim();
+            saveDb();
+            renderMainPage();
+        }
+    }
+
+    function deleteTeam(id) {
+        const idx = db.teams.findIndex(t => t.id === id);
+        db.teams = db.teams.filter(t => t.id !== id);
+        delete db.sessions[id];
+        if (selectedTeamId === id) {
+            selectedTeamId = null;
+            selectedMemberId = null;
+            selectedDate = null;
+            sessionSpeakerId = null;
+        }
+        teamCursor = Math.max(0, Math.min(teamCursor, db.teams.length - 1));
+        saveDb();
+        renderMainPage();
+        updateSessionToolbar();
+        setStatus("Team deleted.");
+    }
+
+    // ── CRUD — MEMBERS ──
+    function addMember(teamId, name) {
+        const team = findTeam(teamId);
+        if (!team) return;
+        const m = {id: genId(), name: name.trim()};
+        team.members.push(m);
+        selectedMemberId = m.id;
+        memberCursor = team.members.length; // +1 offset: cursor 0 = All Users
+        saveDb();
+        renderMembersPanel();
+        renderStats();
+        setStatus(`Member added: ${name.trim()}`);
+    }
+
+    function renameMember(teamId, memberId, name) {
+        const m = findMember(findTeam(teamId), memberId);
+        if (m) {
+            m.name = name.trim();
+            saveDb();
+            renderMembersPanel();
+            renderStats();
+        }
+    }
+
+    function deleteMember(teamId, memberId) {
+        const team = findTeam(teamId);
+        if (!team) return;
+        team.members = team.members.filter(m => m.id !== memberId);
+        const tSessions = db.sessions[teamId] || {};
+        for (const date of Object.keys(tSessions)) {
+            tSessions[date] = tSessions[date].filter(r => r.memberId !== memberId);
+        }
+        if (selectedMemberId === memberId) selectedMemberId = null;
+        if (sessionSpeakerId === memberId) {
+            sessionSpeakerId = null;
+            document.getElementById("btn-stop-speaker").disabled = true;
+        }
+        memberCursor = Math.max(0, Math.min(memberCursor, team.members.length - 1));
+        saveDb();
+        renderMembersPanel();
+        renderStats();
+        setStatus("Member removed.");
+    }
+
+    function resetSession() {
+        if (!selectedTeamId || !selectedDate) return;
+        const tSessions = db.sessions[selectedTeamId] || {};
+        delete tSessions[selectedDate];
+        sessionSpeakerId = null;
+        selectedDate = null;
+        document.getElementById("btn-stop-speaker").disabled = true;
+        saveDb();
+        renderSessionsList();
+        renderMembersPanel();
+        updateSessionToolbar();
+        setStatus("Session reset.");
+    }
+
+    function clearAll() {
+        db = {teams: [], sessions: {}};
+        selectedTeamId = null;
+        selectedMemberId = null;
+        selectedDate = null;
+        sessionSpeakerId = null;
+        teamCursor = 0;
+        dateCursor = 0;
+        memberCursor = 0;
+        recordingCursor = 0;
+        saveDb();
+        renderMainPage();
+        updateSessionToolbar();
+        setStatus("All data cleared.");
+    }
+
+    // ═══════════════════════════════════════════════════════════════════
+    //  SESSIONS SUB-PANEL (left column)
+    // ═══════════════════════════════════════════════════════════════════
+    function getTeamDates() {
+        if (!selectedTeamId) return [];
+        return Object.keys(db.sessions[selectedTeamId] || {}).sort();
+    }
+
+    // newDateInputValue: when the user is typing in the new-date field, preserve it
+    let newDateInputValue = null;
+
+    function renderSessionsList() {
+        const panel = document.getElementById("panel-sessions");
+        const header = document.getElementById("sessions-panel-header");
+        const el = document.getElementById("sessions-list");
+
+        if (!selectedTeamId) {
+            panel.classList.add("hidden");
+            return;
+        }
+
+        panel.classList.remove("hidden");
+
+        const team = findTeam(selectedTeamId);
+        const dates = getTeamDates();
+        const today = todayStr();
+        const hasToday = dates.includes(today);
+
+        header.textContent = `══ ${(team ? team.name : "").toUpperCase().slice(0, 14)} ══`;
+
+        // dateCursor 0..dates.length-1 = existing dates, dates.length = new-date
+        const totalSlots = dates.length + 1;
+        if (dateCursor >= totalSlots) dateCursor = Math.max(0, totalSlots - 1);
+
+        // Existing date rows (index 0 .. dates.length-1)
+        let html = "";
+        dates.forEach((d, i) => {
+            const rows = getSessionRows(selectedTeamId, d);
+            const memberCount = rows.filter(r => r.totalMs > 0 || r.turns > 0).length;
+            const isSelected = d === selectedDate;
+            const isCursor = i === dateCursor;
+            html += `<div class="session-item ${isSelected ? "selected" : ""} ${isCursor ? "cursor" : ""}"
+                  onclick="selectDate('${d}')"
+                  data-date="${d}">
+      <span class="session-date">${d}</span>
+      <span class="session-meta">${memberCount}m</span>
+    </div>`;
+        });
+
+        // New-date row (last, index dates.length)
+        const newRowIdx = dates.length;
+        const newCursor = dateCursor === newRowIdx;
+        const inputVal = newDateInputValue !== null ? newDateInputValue : today;
+        html += `<div class="session-item session-new ${newCursor ? "cursor" : ""}" id="session-new-row"
+                onclick="document.getElementById('session-date-input').focus()">
+    <span style="color:#888;font-size:13px;margin-right:4px;">+</span>
+    <input class="session-date-input" id="session-date-input"
+           value="${escHtml(inputVal)}" maxlength="10"
+           onclick="event.stopPropagation()"
+           onkeydown="sessionDateInputKeydown(event)"
+           onfocus="onSessionDateInputFocus()"
+           onblur="onSessionDateInputBlur()"
+           placeholder="YYYY-MM-DD" />
+  </div>`;
+
+        el.innerHTML = html;
+    }
+
+
+    function onSessionDateInputFocus() {
+        // When the inline input is focused, record that we're editing
+        const inp = document.getElementById("session-date-input");
+        if (inp && newDateInputValue === null) newDateInputValue = inp.value;
+    }
+
+    function onSessionDateInputBlur() {
+        // Don't reset newDateInputValue on blur — keep the typed value until Enter/Esc
+    }
+
+    function sessionDateInputKeydown(e) {
+        if (e.key === "Enter") {
+            e.preventDefault();
+            e.stopPropagation();
+            const inp = document.getElementById("session-date-input");
+            const val = inp ? inp.value.trim() : "";
+            if (/^\d{4}-\d{2}-\d{2}$/.test(val)) {
+                newDateInputValue = null;
+                createAndSelectDate(val);
+            } else {
+                setStatus("⚠ Date must be YYYY-MM-DD");
+            }
+        } else if (e.key === "Escape") {
+            e.preventDefault();
+            e.stopPropagation();
+            newDateInputValue = null;
+            renderSessionsList();
+        } else {
+            // Keep newDateInputValue in sync as user types
+            setTimeout(() => {
+                const inp = document.getElementById("session-date-input");
+                if (inp) newDateInputValue = inp.value;
+            }, 0);
+        }
+    }
+
+    function selectDate(dateStr) {
+        stopCurrentSpeaker();
+        selectedDate = dateStr;
+        newDateInputValue = null;
+        // Sync dateCursor to the selected date row (offset +1 for the up-row)
+        const dates = getTeamDates();
+        const idx = dates.indexOf(dateStr);
+        if (idx >= 0) dateCursor = idx;
+
+        focusedPanel = "recording";
+        recordingCursor = 0;
+        updateSessionToolbar();
+        renderSessionsList();
+        renderMembersPanel();
+        highlightFocusedPanel();
+        updateKbHints();
+        setStatus(`Session: ${dateStr}`);
+    }
+
+    function deselectDate() {
+        stopCurrentSpeaker();
+        selectedDate = null;
+        newDateInputValue = null;
+        updateSessionToolbar();
+        renderSessionsList();
+        renderMembersPanel();
+        updateKbHints();
+        setStatus("Ready.");
+    }
+
+    function createAndSelectDate(dateStr) {
+        if (!selectedTeamId) return;
+        if (!db.sessions[selectedTeamId]) db.sessions[selectedTeamId] = {};
+        if (!db.sessions[selectedTeamId][dateStr]) db.sessions[selectedTeamId][dateStr] = [];
+        newDateInputValue = null;
+        saveDb();
+        selectDate(dateStr);
+    }
+
+    // ═══════════════════════════════════════════════════════════════════
+    //  RENDER — MAIN PAGE
+    // ═══════════════════════════════════════════════════════════════════
+    function renderMainPage() {
+        renderTeamsList();
+        renderSessionsList();
+        renderMembersPanel();
+        renderStats();
+        highlightFocusedPanel();
+        updateKbHints();
+    }
+
+    function renderTeamsList() {
+        const el = document.getElementById("teams-list");
+        if (db.teams.length === 0) {
+            el.innerHTML = `<div class="empty-state" style="font-size:16px;">[ No teams ]<br>F5 = New Team</div>`;
+            return;
+        }
+        if (teamCursor >= db.teams.length) teamCursor = Math.max(0, db.teams.length - 1);
+        el.innerHTML = db.teams.map((t, i) => {
+            const sel = t.id === selectedTeamId;
+            const isCursor = i === teamCursor;
+            const memberCount = t.members.length;
+            const sessCount = Object.keys(db.sessions[t.id] || {}).length;
+            return `<div class="team-item ${sel ? "selected" : ""} ${isCursor ? "cursor" : ""}"
+                 onclick="selectTeam('${t.id}')"
+                 data-id="${t.id}">
+      <span class="team-name">${escHtml(t.name)}</span>
+      <span class="team-meta">${memberCount}m ${sessCount}s</span>
+    </div>`;
+        }).join("");
+    }
+
+    function renderMembersPanel() {
+        const recordingZone = document.getElementById("recording-zone");
+        const membersListEl = document.getElementById("members-list");
+        const header = document.getElementById("members-panel-header");
+
+        const team = findTeam(selectedTeamId);
+
+        highlightFocusedPanel();
+
+        // Recording zone: show/hide independently of member list
+        if (selectedDate && team) {
+            recordingZone.classList.remove("hidden");
+            document.getElementById("recording-zone-header").textContent =
+                `══ ${team.name.toUpperCase().slice(0, 14)} — ${selectedDate} ═══════════════════`;
+            renderRecordingInfoBar();
+            renderRecordingTable();
+        } else {
+            recordingZone.classList.add("hidden");
+        }
+
+        // Member list: always rendered
+        if (!team) {
+            header.textContent = "══ MEMBERS ═══════════";
+            membersListEl.innerHTML = `<div class="empty-state" style="font-size:15px;">[ Select a team ]</div>`;
+            return;
+        }
+        header.textContent = `══ ${team.name.toUpperCase().slice(0, 16)} ══`;
+        if (team.members.length === 0) {
+            membersListEl.innerHTML = `<div class="empty-state" style="font-size:15px;">[ No members ]<br>F6 = Add</div>`;
+            return;
+        }
+        // cursor 0 = All Users row, 1..N = individual members
+        const totalRows = team.members.length + 1;
+        if (memberCursor >= totalRows) memberCursor = Math.max(0, totalRows - 1);
+        const allSel = selectedMemberId === "__all__";
+        const allCursor = memberCursor === 0;
+        const allUsersRow = `<div class="member-item all-users ${allSel ? "selected" : ""} ${allCursor ? "cursor" : ""}"
+                   onclick="selectMember('__all__')"
+                   data-id="__all__">
+        <span class="member-name">★ All Users</span>
+      </div>`;
+        membersListEl.innerHTML = allUsersRow + team.members.map((m, i) => {
+            const sel = m.id === selectedMemberId;
+            const isCursor = (i + 1) === memberCursor;
+            return `<div class="member-item ${sel ? "selected" : ""} ${isCursor ? "cursor" : ""}"
+                   onclick="selectMember('${m.id}')"
+                   data-id="${m.id}">
+        <span class="member-name">${escHtml(m.name)}</span>
+      </div>`;
+        }).join("");
+    }
+
+    function renderRecordingInfoBar() {
+        const el = document.getElementById("recording-info-bar");
+        const team = findTeam(selectedTeamId);
+        const speakerName = sessionSpeakerId
+            ? (findMember(team, sessionSpeakerId) || {name: "?"}).name
+            : "—";
+        el.innerHTML = `
+    <div class="rec-stat"><span class="lbl">SPEAKING</span><span class="val" id="rec-speaker" style="color:var(--accent-green)">${escHtml(speakerName)}</span></div>
+    <div class="rec-stat"><span class="lbl">MEMBERS</span><span class="val">${team ? team.members.length : 0}</span></div>
+  `;
+    }
+
+    function renderRecordingTable() {
+        const team = findTeam(selectedTeamId);
+        if (!team) return;
+
+        const tbody = document.getElementById("recording-tbody");
+        const rows = getSessionRows(selectedTeamId, selectedDate);
+
+        const members = team.members.map(m => {
+            const row = rows.find(r => r.memberId === m.id) || {
+                memberId: m.id,
+                totalMs: 0,
+                turns: 0,
+                lastStart: null,
+                lastTalkTime: null
+            };
+            return {...m, ...row, id: m.id};
+        });
+
+        const sorted = members;
+
+        const totalMs = sorted.reduce((s, m) => s + getLiveMs(m), 0) || 1;
+
+        if (recordingCursor >= sorted.length) recordingCursor = Math.max(0, sorted.length - 1);
+
+        if (sorted.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="9" class="empty-state">[ No members ] – F6 = Add</td></tr>`;
+            return;
+        }
+
+        tbody.innerHTML = sorted.map((m, i) => {
+            const ms = getLiveMs(m);
+            const pct = Math.round(ms / totalMs * 100);
+            const isSpeaking = m.id === sessionSpeakerId;
+            const isCursor = i === recordingCursor;
+            const hasSpoken = m.turns > 0;
+            const dot = isSpeaking ? `<span class="speaking-dot"></span>` : "";
+
+            let rowClass = "";
+            if (isSpeaking && isCursor) rowClass = "row-speaking row-selected";
+            else if (isSpeaking) rowClass = "row-speaking";
+            else if (isCursor) rowClass = "row-selected";
+
+            return `<tr class="${rowClass}"
+                onclick="clickRecordingRow(${i}, '${m.id}')"
+                data-idx="${i}" data-id="${m.id}">
+      <td class="col-rank">${i + 1}</td>
+      <td class="col-name"><div class="name-cell">${dot}${escHtml(m.name)}</div></td>
+      <td class="col-time">${fmtMs(ms)}</td>
+      <td class="col-pct">${pct}%</td>
+      <td class="col-bar">
+        <div class="pct-bar-wrap">
+          <div class="pct-bar-fill" style="width:${pct}%"></div>
+        </div>
+      </td>
+      <td class="col-bool">${hasSpoken ? "<span class=\"bool-yes\">▶ YES</span>" : "<span class=\"bool-no\">—</span>"}</td>
+      <td class="col-turns">${m.turns || 0}×</td>
+      <td class="col-last">${fmtTime(m.lastTalkTime)}</td>
+      <td class="col-actions">
+        <div class="row-actions">
+          <button class="row-btn" onclick="event.stopPropagation(); openRenameMemberInRecording('${m.id}')" title="Rename">✎</button>
+          <button class="row-btn del" onclick="event.stopPropagation(); confirmDeleteMemberFromRecording('${m.id}','${escHtml(m.name)}')" title="Delete">✕</button>
+        </div>
+      </td>
+    </tr>`;
+        }).join("");
+    }
+
+    function clickRecordingRow(idx, memberId) {
+        recordingCursor = idx;
+        startSpeaker(memberId);
+    }
+
+    // ═══════════════════════════════════════════════════════════════════
+    //  RENDER — STATS
+    // ═══════════════════════════════════════════════════════════════════
+    function renderStats() {
+        const el = document.getElementById("stats-content");
+        const team = findTeam(selectedTeamId);
+        if (!team) {
+            el.innerHTML = `<div class="stats-placeholder">[ Select a member to view stats ]</div>`;
+            return;
+        }
+
+        if (selectedMemberId === "__all__") {
+            renderAllUsersStats(el, team);
+            return;
+        }
+
+        const member = findMember(team, selectedMemberId);
+        if (!member) {
+            el.innerHTML = `<div class="stats-placeholder">[ Select a member to view stats ]</div>`;
+            return;
+        }
+        const stats = getMemberStats(selectedTeamId, member.id);
+        const totalSessions = stats.datesActive.length;
+        const avgMs = totalSessions ? Math.round(stats.totalMs / totalSessions) : 0;
+
+        el.innerHTML = `
+    <div class="stats-user-title">► ${escHtml(member.name)}</div>
+    <div class="stats-summary">
+      <div class="stat-box">
+        <span class="lbl">TOTAL TIME</span>
+        <span class="val">${fmtMs(stats.totalMs)}</span>
+      </div>
+      <div class="stat-box">
+        <span class="lbl">TURNS</span>
+        <span class="val">${stats.totalTurns}</span>
+      </div>
+      <div class="stat-box">
+        <span class="lbl">SESSIONS</span>
+        <span class="val">${totalSessions}</span>
+      </div>
+      <div class="stat-box">
+        <span class="lbl">Ø TIME/SESSION</span>
+        <span class="val">${fmtMs(avgMs)}</span>
+      </div>
+    </div>
+    ${totalSessions > 0 ? `
+    <div class="stats-sessions-title">SESSION HISTORY:</div>
+    <table class="stats-sessions-table">
+      <thead>
+        <tr>
+          <th>DATE</th>
+          <th>TIME</th>
+          <th>%</th>
+          <th>TURNS</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${stats.datesActive.map(d => {
+            const dateRows = getSessionRows(selectedTeamId, d.date);
+            const dateTotalMs = dateRows.reduce((s, r) => s + r.totalMs, 0) || 1;
+            const pct = Math.round(d.ms / dateTotalMs * 100);
+            return `<tr>
+            <td>${d.date}</td>
+            <td>${fmtMs(d.ms)}</td>
+            <td>${pct}%</td>
+            <td>${d.turns}×</td>
+          </tr>`;
+        }).join("")}
+      </tbody>
+    </table>` : `<div class="stats-placeholder" style="font-size:16px;">[ No session data ]</div>`}
+  `;
+    }
+
+    function renderAllUsersStats(el, team) {
+        const sessions = db.sessions[team.id] || {};
+        const allDates = Object.keys(sessions).sort((a, b) => b.localeCompare(a));
+        let grandTotalMs = 0;
+        let grandTurns = 0;
+        allDates.forEach(d => {
+            const rows = sessions[d] || [];
+            rows.forEach(r => {
+                grandTotalMs += r.totalMs;
+                grandTurns += r.turns;
+            });
+        });
+        const totalSessions = allDates.length;
+        const avgMs = totalSessions ? Math.round(grandTotalMs / totalSessions) : 0;
+
+        const memberRows = team.members.map(m => {
+            const s = getMemberStats(team.id, m.id);
+            return {name: m.name, totalMs: s.totalMs, turns: s.totalTurns, sessions: s.datesActive.length};
+        }).sort((a, b) => b.totalMs - a.totalMs);
+
+        const grandMs = grandTotalMs || 1;
+
+        el.innerHTML = `
+    <div class="stats-user-title" style="color:var(--accent-cyan);">★ All Users — ${escHtml(team.name)}</div>
+    <div class="stats-summary">
+      <div class="stat-box">
+        <span class="lbl">TOTAL TIME</span>
+        <span class="val">${fmtMs(grandTotalMs)}</span>
+      </div>
+      <div class="stat-box">
+        <span class="lbl">TURNS</span>
+        <span class="val">${grandTurns}</span>
+      </div>
+      <div class="stat-box">
+        <span class="lbl">SESSIONS</span>
+        <span class="val">${totalSessions}</span>
+      </div>
+      <div class="stat-box">
+        <span class="lbl">Ø TIME/SESSION</span>
+        <span class="val">${fmtMs(avgMs)}</span>
+      </div>
+    </div>
+    ${memberRows.length > 0 ? `
+    <div class="stats-sessions-title">MEMBERS BREAKDOWN:</div>
+    <table class="stats-sessions-table">
+      <thead>
+        <tr>
+          <th>MEMBER</th>
+          <th>TIME</th>
+          <th>%</th>
+          <th>TURNS</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${memberRows.map(m => {
+            const pct = Math.round(m.totalMs / grandMs * 100);
+            return `<tr>
+            <td>${escHtml(m.name)}</td>
+            <td>${fmtMs(m.totalMs)}</td>
+            <td>${pct}%</td>
+            <td>${m.turns}×</td>
+          </tr>`;
+        }).join("")}
+      </tbody>
+    </table>` : `<div class="stats-placeholder" style="font-size:16px;">[ No session data ]</div>`}
+  `;
+    }
+
+    // ═══════════════════════════════════════════════════════════════════
+    //  SELECT TEAM / MEMBER
+    // ═══════════════════════════════════════════════════════════════════
+    function selectTeam(id) {
+        stopCurrentSpeaker();
+        selectedTeamId = id;
+        selectedMemberId = null;
+        selectedDate = null;
+
+        const idx = db.teams.findIndex(t => t.id === id);
+        if (idx >= 0) teamCursor = idx;
+        memberCursor = 0;
+        recordingCursor = 0;
+        dateCursor = 0;
+
+        renderTeamsList();
+        renderSessionsList();
+        renderMembersPanel();
+        renderStats();
+        updateSessionToolbar();
+        updateKbHints();
+        const t = findTeam(id);
+        if (t) setStatus(`Team selected: ${t.name}`);
+    }
+
+    function selectMember(id) {
+        selectedMemberId = id;
+        const team = findTeam(selectedTeamId);
+        if (team) {
+            if (id === "__all__") {
+                memberCursor = 0;
+            } else {
+                const idx = team.members.findIndex(m => m.id === id);
+                if (idx >= 0) memberCursor = idx + 1;
+            }
+        }
+        renderMembersPanel();
+        renderStats();
+        if (id === "__all__") {
+            setStatus("All Users selected");
+        } else {
+            const m = findMember(findTeam(selectedTeamId), id);
+            if (m) setStatus(`Member selected: ${m.name}`);
+        }
+    }
+
+    // ═══════════════════════════════════════════════════════════════════
+    //  PANEL FOCUS / KB HINTS
+    // ═══════════════════════════════════════════════════════════════════
+    function highlightFocusedPanel() {
+        document.getElementById("panel-teams").classList.toggle("panel-focused", focusedPanel === "teams");
+        const sessionsPanel = document.getElementById("panel-sessions");
+        if (sessionsPanel) sessionsPanel.classList.toggle("panel-focused", focusedPanel === "dates");
+        document.getElementById("panel-members").classList.toggle("panel-focused", focusedPanel === "members");
+        const recZone = document.getElementById("recording-zone");
+        if (recZone) recZone.classList.toggle("panel-focused", focusedPanel === "recording");
+    }
+
+    function updateKbHints() {
+        const el = document.getElementById("kb-hints");
+        if (selectedDate) {
+            el.innerHTML = `<span>Enter</span>Toggle speaker &nbsp;<span>F8</span>Stop speaker &nbsp;<span>F6</span>Add member &nbsp;<span>F10</span>Reset session &nbsp;<span>Esc</span>Back &nbsp;<span>←→</span>Switch panel`;
+        } else {
+            el.innerHTML = `<span>F5</span>New Team &nbsp;<span>F2</span>Rename &nbsp;<span>F6</span>Add Member &nbsp;<span>Enter</span>Open date &nbsp;<span>↑↓</span>Navigate &nbsp;<span>DEL</span>Delete &nbsp;<span>←→Tab</span>Switch panel`;
+        }
+    }
+
+    // ═══════════════════════════════════════════════════════════════════
+    //  DIALOGS
+    // ═══════════════════════════════════════════════════════════════════
+    function openDlg(id, inputId, value) {
+        document.getElementById(id).classList.remove("hidden");
+        if (inputId) {
+            const inp = document.getElementById(inputId);
+            inp.value = value || "";
+            setTimeout(() => {
+                inp.focus();
+                if (value) inp.select();
+            }, 50);
+        }
+    }
+
+    function closeDlg(id) {
+        document.getElementById(id).classList.add("hidden");
+    }
+
+    function dlgKeydown(e, dlgId, confirmFn) {
+        if (e.key === "Enter") {
+            e.preventDefault();
+            confirmFn();
+        }
+        if (e.key === "Escape") {
+            e.preventDefault();
+            closeDlg(dlgId);
+        }
+    }
+
+    // ── Team dialog ──
+    function openAddTeamDialog() {
+        editingTeamId = null;
+        document.getElementById("dlg-team-title").textContent = "╔═ NEW TEAM ═╗";
+        openDlg("dlg-team", "dlg-team-input", "");
+    }
+
+    function openRenameTeam(id) {
+        editingTeamId = id;
+        const t = findTeam(id);
+        document.getElementById("dlg-team-title").textContent = "╔═ RENAME TEAM ═╗";
+        openDlg("dlg-team", "dlg-team-input", t ? t.name : "");
+    }
+
+    function confirmTeam() {
+        const name = document.getElementById("dlg-team-input").value.trim();
+        if (!name) return;
+        if (editingTeamId) renameTeam(editingTeamId, name);
+        else addTeam(name);
+        closeDlg("dlg-team");
+    }
+
+    // ── Member dialog ──
+    function openAddMemberDialog() {
+        if (!selectedTeamId) {
+            setStatus("⚠ Select a team first!");
+            return;
+        }
+        editingMemberId = null;
+        document.getElementById("dlg-member-title").textContent = "╔═ ADD MEMBER ═╗";
+        openDlg("dlg-member", "dlg-member-input", "");
+    }
+
+    function openRenameMember(teamId, memberId) {
+        const m = findMember(findTeam(teamId), memberId);
+        editingMemberId = memberId;
+        document.getElementById("dlg-member-title").textContent = "╔═ RENAME MEMBER ═╗";
+        openDlg("dlg-member", "dlg-member-input", m ? m.name : "");
+    }
+
+    function openRenameMemberInRecording(memberId) {
+        openRenameMember(selectedTeamId, memberId);
+        editingMemberId = memberId;
+    }
+
+    function confirmMember() {
+        const name = document.getElementById("dlg-member-input").value.trim();
+        if (!name) return;
+        if (editingMemberId) renameMember(selectedTeamId, editingMemberId, name);
+        else addMember(selectedTeamId, name);
+        closeDlg("dlg-member");
+        editingMemberId = null;
+    }
+
+    // ── Confirm dialog ──
+    let confirmCb = null;
+
+    function openConfirm(msg, cb) {
+        document.getElementById("confirm-msg").textContent = msg;
+        confirmCb = cb;
+        document.getElementById("dlg-confirm").classList.remove("hidden");
+        document.getElementById("confirm-yes-btn").focus();
+    }
+
+    document.getElementById("confirm-yes-btn").addEventListener("click", () => {
+        if (confirmCb) confirmCb();
+        closeDlg("dlg-confirm");
+        confirmCb = null;
+    });
+
+    function confirmDeleteMemberFromRecording(id, name) {
+        openConfirm(`Delete member "${name}"?`, () => deleteMember(selectedTeamId, id));
+    }
+
+    function confirmResetSession() {
+        if (!selectedDate) return;
+        openConfirm(`Reset session ${selectedDate}? All data will be lost.`, resetSession);
+    }
+
+    function confirmClearAll() {
+        openConfirm("Delete ALL data? (teams, members, sessions)", clearAll);
+    }
+
+    // ── Import dialog ──
+    function openImportDialog() {
+        importData = null;
+        document.getElementById("dlg-import-file").value = "";
+        document.getElementById("import-preview").textContent = "";
+        document.getElementById("btn-import-confirm").disabled = true;
+        openDlg("dlg-import", null);
+    }
+
+    function onImportFileChange() {
+        const file = document.getElementById("dlg-import-file").files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = e => {
+            try {
+                importData = JSON.parse(e.target.result);
+                const teamCount = (importData.teams || []).length;
+                const sessCount = Object.keys(importData.sessions || {}).length;
+                document.getElementById("import-preview").textContent =
+                    `✓ Found: ${teamCount} teams, ${sessCount} team session sets`;
+                document.getElementById("btn-import-confirm").disabled = false;
+            } catch (err) {
+                document.getElementById("import-preview").textContent = "✕ Invalid file!";
+                document.getElementById("btn-import-confirm").disabled = true;
+                importData = null;
+            }
+        };
+        reader.readAsText(file);
+    }
+
+    function confirmImport() {
+        if (!importData) return;
+        db = {
+            teams: importData.teams || [],
+            sessions: importData.sessions || {}
+        };
+        selectedTeamId = null;
+        selectedMemberId = null;
+        selectedDate = null;
+        saveDb();
+        closeDlg("dlg-import");
+        renderMainPage();
+        updateSessionToolbar();
+        setStatus("Import complete.");
+    }
+
+    // ═══════════════════════════════════════════════════════════════════
+    //  EXPORT
+    // ═══════════════════════════════════════════════════════════════════
+    function exportData() {
+        const data = JSON.parse(JSON.stringify(db));
+        const json = JSON.stringify(data, null, 2);
+        const blob = new Blob([json], {type: "application/json"});
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `meeting-timer-${todayStr()}.json`;
+        a.click();
+        URL.revokeObjectURL(url);
+        setStatus("Data exported to JSON.");
+    }
+
+    // ═══════════════════════════════════════════════════════════════════
+    //  TICK
+    // ═══════════════════════════════════════════════════════════════════
+    function tick() {
+        const now = new Date();
+        document.getElementById("clock").textContent =
+            now.toLocaleTimeString("en-GB", {hour: "2-digit", minute: "2-digit", second: "2-digit"});
+
+        if (selectedDate && sessionSpeakerId) {
+            renderRecordingTable();
+        }
+    }
+
+    setInterval(tick, 500);
+    tick();
+
+    // ═══════════════════════════════════════════════════════════════════
+    //  KEYBOARD SHORTCUTS
+    // ═══════════════════════════════════════════════════════════════════
+    document.addEventListener("keydown", e => {
+        const tag = document.activeElement.tagName;
+        const isDateInput = document.activeElement.id === "session-date-input";
+        const inInput = (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") && !isDateInput;
+        const dlgOpen = !!document.querySelector(".overlay:not(.hidden)");
+
+        // Escape always closes dialogs or deselects date
+        if (e.key === "Escape") {
+            if (dlgOpen) {
+                document.querySelectorAll(".overlay:not(.hidden)").forEach(d => d.classList.add("hidden"));
+                return;
+            }
+            if (isDateInput) {
+                newDateInputValue = null;
+                document.activeElement.blur();
+                renderSessionsList();
+                return;
+            }
+            if (!inInput && selectedDate) {
+                deselectDate();
+                focusedPanel = "dates";
+                highlightFocusedPanel();
+                updateKbHints();
+            }
+            return;
+        }
+
+        if (inInput || dlgOpen) return;
+
+        // If date input is focused, arrow/tab blurs it and falls through to panel navigation
+        if (isDateInput && (e.key === "ArrowDown" || e.key === "ArrowUp" || e.key === "ArrowLeft" || e.key === "ArrowRight" || e.key === "Tab")) {
+            e.preventDefault();
+            document.activeElement.blur();
+            // fall through to normal key handling below
+        }
+
+        // ── Global shortcuts (work in all panels) ──
+        if (e.key === "F5") {
+            e.preventDefault();
+            openAddTeamDialog();
+            return;
+        }
+        if (e.key === "F6") {
+            e.preventDefault();
+            openAddMemberDialog();
+            return;
+        }
+
+        // ── Recording-mode shortcuts ──
+        if (selectedDate) {
+            if (e.key === "F8") {
+                e.preventDefault();
+                stopCurrentSpeaker();
+                return;
+            }
+            if (e.key === "F10") {
+                e.preventDefault();
+                confirmResetSession();
+                return;
+            }
+        } else {
+            if (e.key === "F10") {
+                e.preventDefault();
+                confirmClearAll();
+                return;
+            }
+        }
+
+        // ── Tab: cycle panels ──
+        if (e.key === "Tab") {
+            e.preventDefault();
+            const order = selectedDate ? ["teams", "dates", "recording", "members"] : ["teams", "dates", "members"];
+            const idx = order.indexOf(focusedPanel);
+            focusedPanel = order[(idx + 1) % order.length];
+            highlightFocusedPanel();
+            updateKbHints();
+            return;
+        }
+
+        // ── Arrow Left/Right: switch panels ──
+        if (e.key === "ArrowLeft") {
+            e.preventDefault();
+            if (focusedPanel === "members") focusedPanel = selectedDate ? "recording" : "dates";
+            else if (focusedPanel === "recording") focusedPanel = "dates";
+            else if (focusedPanel === "dates") focusedPanel = "teams";
+            highlightFocusedPanel();
+            updateKbHints();
+            return;
+        }
+        if (e.key === "ArrowRight") {
+            e.preventDefault();
+            if (focusedPanel === "teams") focusedPanel = "dates";
+            else if (focusedPanel === "dates") focusedPanel = selectedDate ? "recording" : "members";
+            else if (focusedPanel === "recording") focusedPanel = "members";
+            highlightFocusedPanel();
+            updateKbHints();
+            return;
+        }
+
+        // ── Panel-specific: Arrow Up/Down ──
+        if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+            e.preventDefault();
+            const dir = e.key === "ArrowDown" ? 1 : -1;
+
+            if (focusedPanel === "teams") {
+                teamCursor = Math.max(0, Math.min(teamCursor + dir, db.teams.length - 1));
+                if (db.teams[teamCursor]) selectTeam(db.teams[teamCursor].id);
+                else renderTeamsList();
+
+            } else if (focusedPanel === "dates") {
+                const dates = getTeamDates();
+                const totalSlots = 1 + dates.length + 1; // up-row + dates + new-date
+                dateCursor = Math.max(0, Math.min(dateCursor + dir, totalSlots - 1));
+                renderSessionsList();
+
+            } else if (focusedPanel === "recording") {
+                const team = findTeam(selectedTeamId);
+                const count = team ? team.members.length : 0;
+                recordingCursor = Math.max(0, Math.min(recordingCursor + dir, count - 1));
+                renderRecordingTable();
+
+            } else if (focusedPanel === "members") {
+                // Always member list mode (cursor 0 = All Users, 1..N = members)
+                const team = findTeam(selectedTeamId);
+                if (team && team.members.length > 0) {
+                    memberCursor = Math.max(0, Math.min(memberCursor + dir, team.members.length));
+                    if (memberCursor === 0) selectMember("__all__");
+                    else selectMember(team.members[memberCursor - 1].id);
+                }
+            }
+            return;
+        }
+
+        // ── Panel-specific: Enter ──
+        if (e.key === "Enter") {
+            e.preventDefault();
+
+            if (focusedPanel === "teams") {
+                // Move focus to dates panel
+                focusedPanel = "dates";
+                highlightFocusedPanel();
+                updateKbHints();
+
+            } else if (focusedPanel === "dates") {
+                const dates = getTeamDates();
+                if (dateCursor < dates.length) {
+                    // Existing date row
+                    selectDate(dates[dateCursor]);
+                } else {
+                    // New-date row: focus the inline input
+                    const inp = document.getElementById("session-date-input");
+                    if (inp) inp.focus();
+                }
+
+            } else if (focusedPanel === "recording") {
+                // Toggle speaker at cursor
+                const team = findTeam(selectedTeamId);
+                if (team && team.members[recordingCursor]) startSpeaker(team.members[recordingCursor].id);
+
+            } else if (focusedPanel === "members") {
+                // Always member list mode: select member (cursor 0 = All Users)
+                const team = findTeam(selectedTeamId);
+                if (team) {
+                    if (memberCursor === 0) selectMember("__all__");
+                    else if (team.members[memberCursor - 1]) selectMember(team.members[memberCursor - 1].id);
+                }
+            }
+            return;
+        }
+
+        // ── Delete ──
+        if (e.key === "Delete") {
+            e.preventDefault();
+            if (focusedPanel === "teams" && selectedTeamId) {
+                const t = findTeam(selectedTeamId);
+                if (t) openConfirm(`Delete team "${t.name}" and all its data?`, () => deleteTeam(selectedTeamId));
+            } else if (focusedPanel === "dates") {
+                const dates = getTeamDates();
+                if (dateCursor < dates.length) {
+                    const d = dates[dateCursor];
+                    openConfirm(`Delete session ${d}?`, () => {
+                        const tSessions = db.sessions[selectedTeamId] || {};
+                        delete tSessions[d];
+                        if (selectedDate === d) deselectDate();
+                        saveDb();
+                        renderSessionsList();
+                        setStatus(`Session ${d} deleted.`);
+                    });
+                }
+            } else if (focusedPanel === "members" && !selectedDate) {
+                if (selectedMemberId) {
+                    const m = findMember(findTeam(selectedTeamId), selectedMemberId);
+                    if (m) openConfirm(`Delete member "${m.name}"?`, () => deleteMember(selectedTeamId, selectedMemberId));
+                }
+            }
+            return;
+        }
+
+        // ── F2: Rename ──
+        if (e.key === "F2") {
+            e.preventDefault();
+            if (focusedPanel === "teams" && selectedTeamId) {
+                openRenameTeam(selectedTeamId);
+            }
+            return;
+        }
+    });
+
+    // ═══════════════════════════════════════════════════════════════════
+    //  INIT
+    // ═══════════════════════════════════════════════════════════════════
+    loadDb();
+    renderMainPage();
+    updateSessionToolbar();
+    setStatus("Ready.");
+</script>
+</body>
+</html>
