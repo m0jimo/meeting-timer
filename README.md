@@ -1,5 +1,7 @@
 # Meeting Timer
 
+**Live: [m0jimo.github.io/meeting-timer](https://m0jimo.github.io/meeting-timer/)**
+
 ![Meeting Timer](docs/meeting-timer.png)
 
 A retro DOS/TUI-styled meeting timer for tracking speaker time across team sessions.
