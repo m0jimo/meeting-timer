@@ -73,6 +73,7 @@
             display: flex;
             flex-direction: column;
             overflow: hidden;
+            position: relative;
         }
 
         .window-titlebar {
@@ -184,6 +185,7 @@
             display: flex;
             flex-direction: column;
             overflow: hidden;
+            padding-left: 18px;
         }
 
         /* ── PAGE ── */
@@ -204,6 +206,15 @@
            ═══════════════════════════════════════════════════════════════ */
         #page-main {
             flex-direction: column;
+        }
+
+        /* ── Team→Members connector SVG overlay ── */
+        #team-connector {
+            position: absolute;
+            inset: 0;
+            pointer-events: none;
+            z-index: 100;
+            overflow: visible;
         }
 
         /* Top row: Teams + Sessions, fixed ~50% height */
@@ -227,6 +238,7 @@
         .teams-panel {
             width: 220px;
             min-width: 140px;
+            border-left: 2px solid var(--panel-border);
             border-right: 2px solid var(--panel-border);
             display: flex;
             flex-direction: column;
@@ -327,8 +339,6 @@
         }
 
         .session-item.cursor:not(.selected) {
-            outline: 1px dashed var(--accent-cyan);
-            outline-offset: -1px;
         }
 
         .session-item .session-date {
@@ -362,11 +372,32 @@
             outline: none;
         }
 
+        /* inline name input for new team / new member rows */
+        .inline-name-input {
+            background: var(--input-bg);
+            color: var(--input-fg);
+            border: 1px solid var(--accent-green);
+            font-family: var(--font-main);
+            font-size: 19px;
+            padding: 0 4px;
+            width: 148px;
+            outline: none;
+        }
+
+        .member-new .inline-name-input {
+            font-size: 18px;
+        }
+
+        .team-item.team-new, .member-item.member-new {
+            color: var(--accent-green);
+        }
+
         /* ── Members panel (bottom-left in browse mode) ── */
         .members-panel {
             width: 260px;
             min-width: 160px;
             min-height: 0;
+            border-left: 2px solid var(--panel-border);
             border-right: 2px solid var(--panel-border);
             display: flex;
             flex-direction: column;
@@ -674,9 +705,6 @@
             color: #888 !important;
         }
 
-        .col-actions {
-            width: 70px;
-        }
 
         .pct-bar-wrap {
             background: #000030;
@@ -730,33 +758,6 @@
             font-size: 16px;
         }
 
-        .row-actions {
-            display: flex;
-            gap: 3px;
-        }
-
-        .row-btn {
-            font-family: var(--font-main);
-            font-size: 15px;
-            padding: 0 5px;
-            border: none;
-            cursor: pointer;
-            background: #224422;
-            color: var(--accent-green);
-        }
-
-        .row-btn:hover {
-            background: #335533;
-        }
-
-        .row-btn.del {
-            background: #442222;
-            color: var(--accent-red);
-        }
-
-        .row-btn.del:hover {
-            background: #553333;
-        }
 
         .empty-state {
             text-align: center;
@@ -925,8 +926,10 @@
 
     <!-- ── TOOLBAR ── -->
     <div class="toolbar" id="toolbar-main">
-        <button class="btn success" onclick="openAddTeamDialog()">[ F5 New Team ]</button>
-        <button class="btn" onclick="openAddMemberDialog()">[ F6 Add Member ]</button>
+        <button class="btn warn" onclick="openHelpDialog()">[ F1 Help ]</button>
+        <span class="toolbar-sep">│</span>
+        <button class="btn success" onclick="focusNewTeamInput()">[ F5 New Team ]</button>
+        <button class="btn" onclick="focusNewMemberInput()">[ F6 Add Member ]</button>
         <span class="toolbar-sep">│</span>
         <button class="btn" id="btn-stop-speaker" onclick="stopCurrentSpeaker()" disabled>[ F8 Stop Speaking ]</button>
         <button class="btn danger" id="btn-reset-session" onclick="confirmResetSession()" disabled>[ F10 Reset Session
@@ -944,7 +947,7 @@
         <!-- ══════════ PAGE — MAIN ══════════ -->
         <div class="page active" id="page-main">
 
-            <!-- Top row: Teams | Sessions | Recording (recording shown when date selected) -->
+                <!-- Top row: Teams | Sessions | Recording (recording shown when date selected) -->
             <div class="main-top">
 
                 <div class="teams-panel" id="panel-teams">
@@ -953,12 +956,12 @@
                 </div>
 
                 <div class="sessions-panel hidden" id="panel-sessions">
-                    <div class="panel-header" id="sessions-panel-header">══ SESSIONS ══</div>
+                    <div class="panel-header" id="sessions-panel-header" onclick="focusedPanel='dates'; highlightFocusedPanel();" style="cursor:pointer;">══ SESSIONS ══</div>
                     <div class="sessions-list" id="sessions-list"></div>
                 </div>
 
                 <div class="recording-zone hidden" id="recording-zone">
-                    <div class="panel-header" id="recording-zone-header">══ RECORDING ══════════════════════</div>
+                    <div class="panel-header" id="recording-zone-header" onclick="focusedPanel='recording'; highlightFocusedPanel();" style="cursor:pointer;">══ RECORDING ══════════════════════</div>
                     <div class="recording-info-bar" id="recording-info-bar"></div>
                     <div class="recording-table-wrap">
                         <table>
@@ -972,7 +975,6 @@
                                 <th class="col-bool">SPOKE</th>
                                 <th class="col-turns">TURNS</th>
                                 <th class="col-last">LAST</th>
-                                <th class="col-actions"></th>
                             </tr>
                             </thead>
                             <tbody id="recording-tbody"></tbody>
@@ -1016,6 +1018,9 @@
         <div id="statusbar-msg" style="color:var(--accent-yellow);">Ready.</div>
         <div id="statusbar-saved" style="color:#00aa00; font-size:14px;"></div>
     </div>
+
+    <!-- SVG connector: selected team → All Users, drawn in window gutter -->
+    <svg id="team-connector" aria-hidden="true"></svg>
 
 </div><!-- /window -->
 
@@ -1069,6 +1074,54 @@
         <div class="dialog-footer">
             <button class="btn danger" id="confirm-yes-btn">[ YES ]</button>
             <button class="btn" onclick="closeDlg('dlg-confirm')">[ NO ]</button>
+        </div>
+    </div>
+</div>
+
+<!-- Help -->
+<div class="overlay hidden" id="dlg-help">
+    <div class="dialog" style="max-width:560px;">
+        <div class="dialog-title">
+            <span>╔═ F1 HELP — MEETING TIMER ═╗</span>
+            <button class="btn" onclick="closeDlg('dlg-help')" style="font-size:16px;">✕</button>
+        </div>
+        <div class="dialog-body" style="gap:10px;">
+            <div style="color:var(--accent-cyan);font-size:17px;">
+                A retro DOS/TUI-styled meeting timer for tracking speaker time across team sessions.
+            </div>
+            <div style="border-top:1px solid #003366;padding-top:8px;color:var(--accent-yellow);font-size:16px;letter-spacing:1px;">
+                ══ KEYBOARD SHORTCUTS ══
+            </div>
+            <table style="width:100%;border-collapse:collapse;font-family:var(--font-mono);font-size:15px;">
+                <tr><td style="color:var(--accent-yellow);padding:2px 8px 2px 0;white-space:nowrap;">Tab / Shift+Tab</td><td style="color:var(--row-fg-bright);">Cycle panel focus (Teams → Sessions → Members)</td></tr>
+                <tr><td style="color:var(--accent-yellow);padding:2px 8px 2px 0;">↑ / ↓</td><td style="color:var(--row-fg-bright);">Navigate items in focused panel</td></tr>
+                <tr><td style="color:var(--accent-yellow);padding:2px 8px 2px 0;">Enter</td><td style="color:var(--row-fg-bright);">Select item / confirm</td></tr>
+                <tr><td style="color:var(--accent-yellow);padding:2px 8px 2px 0;">Space</td><td style="color:var(--row-fg-bright);">Start / pause session timer</td></tr>
+                <tr><td style="color:var(--accent-yellow);padding:2px 8px 2px 0;">F1</td><td style="color:var(--row-fg-bright);">This help screen</td></tr>
+                <tr><td style="color:var(--accent-yellow);padding:2px 8px 2px 0;">F2</td><td style="color:var(--row-fg-bright);">Rename selected team or member</td></tr>
+                <tr><td style="color:var(--accent-yellow);padding:2px 8px 2px 0;">F5</td><td style="color:var(--row-fg-bright);">New team</td></tr>
+                <tr><td style="color:var(--accent-yellow);padding:2px 8px 2px 0;">F6</td><td style="color:var(--row-fg-bright);">Add member</td></tr>
+                <tr><td style="color:var(--accent-yellow);padding:2px 8px 2px 0;">F8</td><td style="color:var(--row-fg-bright);">Stop current speaker</td></tr>
+                <tr><td style="color:var(--accent-yellow);padding:2px 8px 2px 0;">F10</td><td style="color:var(--row-fg-bright);">Reset session / Clear all</td></tr>
+                <tr><td style="color:var(--accent-yellow);padding:2px 8px 2px 0;">Delete</td><td style="color:var(--row-fg-bright);">Delete selected item</td></tr>
+                <tr><td style="color:var(--accent-yellow);padding:2px 8px 2px 0;">Escape</td><td style="color:var(--row-fg-bright);">Back / close dialog</td></tr>
+            </table>
+            <div style="border-top:1px solid #003366;padding-top:8px;display:flex;align-items:center;gap:12px;">
+                <div style="font-family:var(--font-mono);font-size:10px;line-height:1.15;color:var(--accent-cyan);white-space:pre;letter-spacing:0.5px;"> _&#9608;___&#9608;_
+&#9608;&#9608; &#9600;&#9600;&#9600; &#9608;&#9608;
+&#9608; o   o &#9608;
+&#9608;  &#9604;&#9604;&#9604;  &#9608;
+&#9608;&#9608;     &#9608;&#9608;
+ &#9608;&#9608;&#9608;&#9608;&#9608;&#9608;&#9608;
+  &#9608; &#9608; &#9608;</div>
+                <div>
+                    <a href="https://github.com/m0jimo/meeting-timer" target="_blank" style="color:var(--accent-yellow);font-size:17px;text-decoration:none;display:inline-block;" onmouseover="this.style.color='#000';this.style.background='var(--accent-yellow)';" onmouseout="this.style.color='var(--accent-yellow)';this.style.background='transparent';">github.com/m0jimo/meeting-timer</a>
+                    <div style="color:#666;font-size:14px;font-family:var(--font-mono);">Data saved in localStorage · No server · No deps</div>
+                </div>
+            </div>
+        </div>
+        <div class="dialog-footer">
+            <button class="btn warn" onclick="closeDlg('dlg-help')">[ OK ]</button>
         </div>
     </div>
 </div>
@@ -1266,6 +1319,7 @@
         saveDb();
         renderRecordingInfoBar();
         renderRecordingTable();
+        renderTeamConnector();
     }
 
     function startSpeaker(memberId) {
@@ -1287,6 +1341,7 @@
         saveDb();
         renderRecordingInfoBar();
         renderRecordingTable();
+        renderTeamConnector();
     }
 
     function updateSessionToolbar() {
@@ -1417,6 +1472,8 @@
 
     // newDateInputValue: when the user is typing in the new-date field, preserve it
     let newDateInputValue = null;
+    let newTeamInputValue = null;
+    let newMemberInputValue = null;
 
     function renderSessionsList() {
         const panel = document.getElementById("panel-sessions");
@@ -1477,9 +1534,10 @@
 
 
     function onSessionDateInputFocus() {
-        // When the inline input is focused, record that we're editing
-        const inp = document.getElementById("session-date-input");
-        if (inp && newDateInputValue === null) newDateInputValue = inp.value;
+        focusedPanel = "dates";
+        dateCursor = getTeamDates().length;
+        highlightFocusedPanel();
+        setTimeout(() => { const inp = document.getElementById("session-date-input"); if (inp) inp.select(); }, 0);
     }
 
     function onSessionDateInputBlur() {
@@ -1512,6 +1570,105 @@
         }
     }
 
+    // ── Inline new-team input ──
+    function onTeamNameInputFocus() {
+        teamCursor = db.teams.length;
+        setTimeout(() => { const inp = document.getElementById("team-name-input"); if (inp) inp.select(); }, 0);
+    }
+
+    function teamNameInputKeydown(e) {
+        if (e.key === "Enter") {
+            e.preventDefault();
+            e.stopPropagation();
+            const inp = document.getElementById("team-name-input");
+            const val = inp ? inp.value.trim() : "";
+            if (val) {
+                newTeamInputValue = null;
+                addTeam(val);
+            } else {
+                setStatus("⚠ Enter a team name");
+            }
+        } else if (e.key === "Escape") {
+            e.preventDefault();
+            e.stopPropagation();
+            newTeamInputValue = null;
+            renderTeamsList();
+            renderTeamConnector();
+        } else {
+            setTimeout(() => {
+                const inp = document.getElementById("team-name-input");
+                if (inp) newTeamInputValue = inp.value;
+            }, 0);
+        }
+    }
+
+    // ── Inline new-member input ──
+    function onMemberNameInputFocus() {
+        memberCursor = (findTeam(selectedTeamId) || {members: []}).members.length + 1;
+        setTimeout(() => { const inp = document.getElementById("member-name-input"); if (inp) inp.select(); }, 0);
+    }
+
+    function memberNameInputKeydown(e) {
+        if (e.key === "Enter") {
+            e.preventDefault();
+            e.stopPropagation();
+            const inp = document.getElementById("member-name-input");
+            const val = inp ? inp.value.trim() : "";
+            if (val && selectedTeamId) {
+                newMemberInputValue = null;
+                addMember(selectedTeamId, val);
+            } else if (!selectedTeamId) {
+                setStatus("⚠ Select a team first");
+            } else {
+                setStatus("⚠ Enter a member name");
+            }
+        } else if (e.key === "Escape") {
+            e.preventDefault();
+            e.stopPropagation();
+            newMemberInputValue = null;
+            renderMembersPanel();
+        } else {
+            setTimeout(() => {
+                const inp = document.getElementById("member-name-input");
+                if (inp) newMemberInputValue = inp.value;
+            }, 0);
+        }
+    }
+
+    function focusNewTeamInput() {
+        newTeamInputValue = null;
+        teamCursor = db.teams.length;
+        renderTeamsList();
+        const inp = document.getElementById("team-name-input");
+        if (inp) { inp.focus(); inp.select(); }
+        focusedPanel = "teams";
+    }
+
+    function focusNewMemberInput() {
+        if (!selectedTeamId) { setStatus("⚠ Select a team first"); return; }
+        newMemberInputValue = null;
+        const team = findTeam(selectedTeamId);
+        memberCursor = (team ? team.members.length : 0) + 1;
+        renderMembersPanel();
+        const inp = document.getElementById("member-name-input");
+        if (inp) { inp.focus(); inp.select(); }
+        focusedPanel = "members";
+    }
+
+    function previewDate(dateStr) {
+        // Like selectDate but keeps focusedPanel on 'dates' for keyboard nav
+        stopCurrentSpeaker();
+        selectedDate = dateStr;
+        newDateInputValue = null;
+        const dates = getTeamDates();
+        const idx = dates.indexOf(dateStr);
+        if (idx >= 0) dateCursor = idx;
+        updateSessionToolbar();
+        renderMembersPanel();
+        highlightFocusedPanel();
+        updateKbHints();
+    }
+
     function selectDate(dateStr) {
         stopCurrentSpeaker();
         selectedDate = dateStr;
@@ -1521,7 +1678,7 @@
         const idx = dates.indexOf(dateStr);
         if (idx >= 0) dateCursor = idx;
 
-        focusedPanel = "recording";
+        focusedPanel = "dates";
         recordingCursor = 0;
         updateSessionToolbar();
         renderSessionsList();
@@ -1561,16 +1718,15 @@
         renderStats();
         highlightFocusedPanel();
         updateKbHints();
+        renderTeamConnector();
     }
 
     function renderTeamsList() {
         const el = document.getElementById("teams-list");
-        if (db.teams.length === 0) {
-            el.innerHTML = `<div class="empty-state" style="font-size:16px;">[ No teams ]<br>F5 = New Team</div>`;
-            return;
-        }
-        if (teamCursor >= db.teams.length) teamCursor = Math.max(0, db.teams.length - 1);
-        el.innerHTML = db.teams.map((t, i) => {
+        const newRowIdx = db.teams.length;
+        if (teamCursor > newRowIdx) teamCursor = newRowIdx;
+        const inputVal = newTeamInputValue !== null ? newTeamInputValue : "Team name";
+        const rows = db.teams.map((t, i) => {
             const sel = t.id === selectedTeamId;
             const isCursor = i === teamCursor;
             const memberCount = t.members.length;
@@ -1581,7 +1737,100 @@
       <span class="team-name">${escHtml(t.name)}</span>
       <span class="team-meta">${memberCount}m ${sessCount}s</span>
     </div>`;
-        }).join("");
+        });
+        const newCursor = teamCursor === newRowIdx;
+        rows.push(`<div class="team-item team-new ${newCursor ? "cursor" : ""}" id="team-new-row"
+                onclick="document.getElementById('team-name-input').focus()">
+      <span style="color:#888;font-size:13px;margin-right:4px;">+</span>
+      <input class="inline-name-input" id="team-name-input"
+             value="${escHtml(inputVal)}"
+             maxlength="40"
+             onclick="event.stopPropagation()"
+             onkeydown="teamNameInputKeydown(event)"
+             onfocus="onTeamNameInputFocus()"
+             placeholder="New team name…" />
+    </div>`);
+        el.innerHTML = rows.join("");
+    }
+
+    function renderTeamConnector() {
+        const svg = document.getElementById("team-connector");
+        svg.innerHTML = "";
+
+        if (!selectedTeamId) return;
+
+        const teamEl = document.querySelector(`.team-item[data-id="${selectedTeamId}"]`);
+        if (!teamEl) return;
+
+        // target: speaking member's row in panel-members, or All Users row
+        const targetEl = sessionSpeakerId
+            ? (document.querySelector(`#panel-members .member-item[data-id="${sessionSpeakerId}"]`) || document.querySelector(".member-item.all-users"))
+            : document.querySelector(".member-item.all-users");
+        if (!targetEl) return;
+
+        const winRect          = document.querySelector(".window").getBoundingClientRect();
+        const teamsPanelRect   = document.getElementById("panel-teams").getBoundingClientRect();
+        const teamRect         = teamEl.getBoundingClientRect();
+        const targetRect       = targetEl.getBoundingClientRect();
+
+        const targetPanelRect  = document.getElementById("panel-members").getBoundingClientRect();
+
+        const ry = (r) => r.top    - winRect.top;
+        const rb = (r) => r.bottom - winRect.top;
+        const rl = (r) => r.left   - winRect.left;
+
+        const tPanelLeft   = rl(teamsPanelRect);
+        const targetPanelLeft = rl(targetPanelRect);
+
+        const teamTop  = ry(teamRect);
+        const teamBot  = rb(teamRect);
+        const teamMidY = (teamTop + teamBot) / 2;
+
+        const tgtTop   = ry(targetRect);
+        const tgtBot   = rb(targetRect);
+        const tgtMidY  = (tgtTop + tgtBot) / 2;
+
+        // rail 8px into the gutter, left of the teams panel border
+        const xRail = tPanelLeft - 8;
+
+        // colour: green when a speaker is active, yellow otherwise
+        const C  = sessionSpeakerId ? "#00ff00" : "#ffff00";
+        const ns = "http://www.w3.org/2000/svg";
+        const W  = "3";
+
+        const seg = (x1, y1, x2, y2) => {
+            const l = document.createElementNS(ns, "line");
+            l.setAttribute("x1", String(Math.round(x1)));
+            l.setAttribute("y1", String(Math.round(y1)));
+            l.setAttribute("x2", String(Math.round(x2)));
+            l.setAttribute("y2", String(Math.round(y2)));
+            l.setAttribute("stroke", C);
+            l.setAttribute("stroke-width", W);
+            l.setAttribute("stroke-linecap", "square");
+            svg.appendChild(l);
+        };
+
+        // teams side: vertical bar spanning row + horizontal to rail
+        seg(tPanelLeft, teamTop,  tPanelLeft, teamBot);
+        seg(tPanelLeft, teamMidY, xRail,      teamMidY);
+
+        // vertical rail
+        seg(xRail, teamMidY, xRail, tgtMidY);
+
+        // target side: horizontal from rail + vertical bar spanning row
+        seg(xRail,          tgtMidY, targetPanelLeft, tgtMidY);
+        seg(targetPanelLeft, tgtTop, targetPanelLeft, tgtBot);
+
+        // solid square elbows
+        [[xRail, teamMidY], [xRail, tgtMidY]].forEach(([cx, cy]) => {
+            const r = document.createElementNS(ns, "rect");
+            r.setAttribute("x",      String(Math.round(cx) - 4));
+            r.setAttribute("y",      String(Math.round(cy) - 4));
+            r.setAttribute("width",  "8");
+            r.setAttribute("height", "8");
+            r.setAttribute("fill",   C);
+            svg.appendChild(r);
+        });
     }
 
     function renderMembersPanel() {
@@ -1608,16 +1857,13 @@
         if (!team) {
             header.textContent = "══ MEMBERS ═══════════";
             membersListEl.innerHTML = `<div class="empty-state" style="font-size:15px;">[ Select a team ]</div>`;
+            renderTeamConnector();
             return;
         }
         header.textContent = `══ ${team.name.toUpperCase().slice(0, 16)} ══`;
-        if (team.members.length === 0) {
-            membersListEl.innerHTML = `<div class="empty-state" style="font-size:15px;">[ No members ]<br>F6 = Add</div>`;
-            return;
-        }
-        // cursor 0 = All Users row, 1..N = individual members
-        const totalRows = team.members.length + 1;
-        if (memberCursor >= totalRows) memberCursor = Math.max(0, totalRows - 1);
+        // cursor 0 = All Users, 1..N = members, N+1 = new-member row
+        const newMemberRowIdx = team.members.length + 1;
+        if (memberCursor > newMemberRowIdx) memberCursor = newMemberRowIdx;
         const allSel = selectedMemberId === "__all__";
         const allCursor = memberCursor === 0;
         const allUsersRow = `<div class="member-item all-users ${allSel ? "selected" : ""} ${allCursor ? "cursor" : ""}"
@@ -1625,7 +1871,7 @@
                    data-id="__all__">
         <span class="member-name">★ All Users</span>
       </div>`;
-        membersListEl.innerHTML = allUsersRow + team.members.map((m, i) => {
+        const memberRows = team.members.map((m, i) => {
             const sel = m.id === selectedMemberId;
             const isCursor = (i + 1) === memberCursor;
             return `<div class="member-item ${sel ? "selected" : ""} ${isCursor ? "cursor" : ""}"
@@ -1634,6 +1880,21 @@
         <span class="member-name">${escHtml(m.name)}</span>
       </div>`;
         }).join("");
+        const newMemberCursor = memberCursor === newMemberRowIdx;
+        const memberInputVal = newMemberInputValue !== null ? newMemberInputValue : "Member name";
+        const newMemberRow = `<div class="member-item member-new ${newMemberCursor ? "cursor" : ""}" id="member-new-row"
+                   onclick="document.getElementById('member-name-input').focus()">
+        <span style="color:#888;font-size:13px;margin-right:4px;">+</span>
+        <input class="inline-name-input" id="member-name-input"
+               value="${escHtml(memberInputVal)}"
+               maxlength="40"
+               onclick="event.stopPropagation()"
+               onkeydown="memberNameInputKeydown(event)"
+               onfocus="onMemberNameInputFocus()"
+               placeholder="New member name…" />
+      </div>`;
+        membersListEl.innerHTML = allUsersRow + memberRows + newMemberRow;
+        renderTeamConnector();
     }
 
     function renderRecordingInfoBar() {
@@ -1673,7 +1934,7 @@
         if (recordingCursor >= sorted.length) recordingCursor = Math.max(0, sorted.length - 1);
 
         if (sorted.length === 0) {
-            tbody.innerHTML = `<tr><td colspan="9" class="empty-state">[ No members ] – F6 = Add</td></tr>`;
+            tbody.innerHTML = `<tr><td colspan="8" class="empty-state">[ No members ] – F6 = Add</td></tr>`;
             return;
         }
 
@@ -1705,18 +1966,14 @@
       <td class="col-bool">${hasSpoken ? "<span class=\"bool-yes\">▶ YES</span>" : "<span class=\"bool-no\">—</span>"}</td>
       <td class="col-turns">${m.turns || 0}×</td>
       <td class="col-last">${fmtTime(m.lastTalkTime)}</td>
-      <td class="col-actions">
-        <div class="row-actions">
-          <button class="row-btn" onclick="event.stopPropagation(); openRenameMemberInRecording('${m.id}')" title="Rename">✎</button>
-          <button class="row-btn del" onclick="event.stopPropagation(); confirmDeleteMemberFromRecording('${m.id}','${escHtml(m.name)}')" title="Delete">✕</button>
-        </div>
-      </td>
     </tr>`;
         }).join("");
     }
 
     function clickRecordingRow(idx, memberId) {
         recordingCursor = idx;
+        focusedPanel = "recording";
+        highlightFocusedPanel();
         startSpeaker(memberId);
     }
 
@@ -1867,7 +2124,7 @@
     function selectTeam(id) {
         stopCurrentSpeaker();
         selectedTeamId = id;
-        selectedMemberId = null;
+        selectedMemberId = "__all__";
         selectedDate = null;
 
         const idx = db.teams.findIndex(t => t.id === id);
@@ -1875,11 +2132,14 @@
         memberCursor = 0;
         recordingCursor = 0;
         dateCursor = 0;
+        newMemberInputValue = null;
 
+        focusedPanel = "teams";
         renderTeamsList();
         renderSessionsList();
         renderMembersPanel();
         renderStats();
+        highlightFocusedPanel();
         updateSessionToolbar();
         updateKbHints();
         const t = findTeam(id);
@@ -1897,8 +2157,10 @@
                 if (idx >= 0) memberCursor = idx + 1;
             }
         }
+        focusedPanel = "members";
         renderMembersPanel();
         renderStats();
+        highlightFocusedPanel();
         if (id === "__all__") {
             setStatus("All Users selected");
         } else {
@@ -1945,6 +2207,10 @@
 
     function closeDlg(id) {
         document.getElementById(id).classList.add("hidden");
+    }
+
+    function openHelpDialog() {
+        document.getElementById("dlg-help").classList.remove("hidden");
     }
 
     function dlgKeydown(e, dlgId, confirmFn) {
@@ -1998,11 +2264,6 @@
         openDlg("dlg-member", "dlg-member-input", m ? m.name : "");
     }
 
-    function openRenameMemberInRecording(memberId) {
-        openRenameMember(selectedTeamId, memberId);
-        editingMemberId = memberId;
-    }
-
     function confirmMember() {
         const name = document.getElementById("dlg-member-input").value.trim();
         if (!name) return;
@@ -2027,10 +2288,6 @@
         closeDlg("dlg-confirm");
         confirmCb = null;
     });
-
-    function confirmDeleteMemberFromRecording(id, name) {
-        openConfirm(`Delete member "${name}"?`, () => deleteMember(selectedTeamId, id));
-    }
 
     function confirmResetSession() {
         if (!selectedDate) return;
@@ -2113,6 +2370,7 @@
 
         if (selectedDate && sessionSpeakerId) {
             renderRecordingTable();
+            renderTeamConnector();
         }
     }
 
@@ -2125,7 +2383,7 @@
     document.addEventListener("keydown", e => {
         const tag = document.activeElement.tagName;
         const isDateInput = document.activeElement.id === "session-date-input";
-        const inInput = (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") && !isDateInput;
+        const inInput = (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT");
         const dlgOpen = !!document.querySelector(".overlay:not(.hidden)");
 
         // Escape always closes dialogs or deselects date
@@ -2151,22 +2409,20 @@
 
         if (inInput || dlgOpen) return;
 
-        // If date input is focused, arrow/tab blurs it and falls through to panel navigation
-        if (isDateInput && (e.key === "ArrowDown" || e.key === "ArrowUp" || e.key === "ArrowLeft" || e.key === "ArrowRight" || e.key === "Tab")) {
-            e.preventDefault();
-            document.activeElement.blur();
-            // fall through to normal key handling below
-        }
-
         // ── Global shortcuts (work in all panels) ──
+        if (e.key === "F1") {
+            e.preventDefault();
+            openHelpDialog();
+            return;
+        }
         if (e.key === "F5") {
             e.preventDefault();
-            openAddTeamDialog();
+            focusNewTeamInput();
             return;
         }
         if (e.key === "F6") {
             e.preventDefault();
-            openAddMemberDialog();
+            focusNewMemberInput();
             return;
         }
 
@@ -2190,12 +2446,27 @@
             }
         }
 
-        // ── Tab: cycle panels ──
+        // ── Tab / Shift+Tab: cycle panels ──
         if (e.key === "Tab") {
             e.preventDefault();
             const order = selectedDate ? ["teams", "dates", "recording", "members"] : ["teams", "dates", "members"];
             const idx = order.indexOf(focusedPanel);
-            focusedPanel = order[(idx + 1) % order.length];
+            const dir = e.shiftKey ? -1 : 1;
+            const newPanel = order[(idx + dir + order.length) % order.length];
+            focusedPanel = newPanel;
+            if (newPanel === "dates") {
+                const dates = getTeamDates();
+                if (dates.length === 0) {
+                    dateCursor = 0;
+                    renderSessionsList();
+                    const inp = document.getElementById("session-date-input");
+                    if (inp) inp.focus();
+                } else {
+                    if (dateCursor >= dates.length) dateCursor = 0;
+                    previewDate(dates[dateCursor]);
+                    renderSessionsList();
+                }
+            }
             highlightFocusedPanel();
             updateKbHints();
             return;
@@ -2213,8 +2484,20 @@
         }
         if (e.key === "ArrowRight") {
             e.preventDefault();
-            if (focusedPanel === "teams") focusedPanel = "dates";
-            else if (focusedPanel === "dates") focusedPanel = selectedDate ? "recording" : "members";
+            if (focusedPanel === "teams") {
+                focusedPanel = "dates";
+                const dates = getTeamDates();
+                if (dates.length === 0) {
+                    dateCursor = 0;
+                    renderSessionsList();
+                    const inp = document.getElementById("session-date-input");
+                    if (inp) inp.focus();
+                } else {
+                    if (dateCursor >= dates.length) dateCursor = 0;
+                    previewDate(dates[dateCursor]);
+                    renderSessionsList();
+                }
+            } else if (focusedPanel === "dates") focusedPanel = selectedDate ? "recording" : "members";
             else if (focusedPanel === "recording") focusedPanel = "members";
             highlightFocusedPanel();
             updateKbHints();
@@ -2227,14 +2510,29 @@
             const dir = e.key === "ArrowDown" ? 1 : -1;
 
             if (focusedPanel === "teams") {
-                teamCursor = Math.max(0, Math.min(teamCursor + dir, db.teams.length - 1));
-                if (db.teams[teamCursor]) selectTeam(db.teams[teamCursor].id);
-                else renderTeamsList();
+                teamCursor = Math.max(0, Math.min(teamCursor + dir, db.teams.length));
+                if (teamCursor === db.teams.length) {
+                    renderTeamsList();
+                    const inp = document.getElementById("team-name-input");
+                    if (inp) inp.focus();
+                } else selectTeam(db.teams[teamCursor].id);
 
             } else if (focusedPanel === "dates") {
                 const dates = getTeamDates();
-                const totalSlots = 1 + dates.length + 1; // up-row + dates + new-date
+                const totalSlots = dates.length + 1; // dates + new-date row
                 dateCursor = Math.max(0, Math.min(dateCursor + dir, totalSlots - 1));
+                if (dateCursor < dates.length) {
+                    previewDate(dates[dateCursor]);
+                } else {
+                    stopCurrentSpeaker();
+                    selectedDate = null;
+                    newDateInputValue = null;
+                    renderMembersPanel();
+                    renderSessionsList();
+                    const inp = document.getElementById("session-date-input");
+                    if (inp) inp.focus();
+                    return;
+                }
                 renderSessionsList();
 
             } else if (focusedPanel === "recording") {
@@ -2244,11 +2542,16 @@
                 renderRecordingTable();
 
             } else if (focusedPanel === "members") {
-                // Always member list mode (cursor 0 = All Users, 1..N = members)
+                // cursor 0 = All Users, 1..N = members, N+1 = new-member row
                 const team = findTeam(selectedTeamId);
-                if (team && team.members.length > 0) {
-                    memberCursor = Math.max(0, Math.min(memberCursor + dir, team.members.length));
-                    if (memberCursor === 0) selectMember("__all__");
+                if (team) {
+                    const maxCursor = team.members.length + 1;
+                    memberCursor = Math.max(0, Math.min(memberCursor + dir, maxCursor));
+                    if (memberCursor === maxCursor) {
+                        renderMembersPanel();
+                        const inp = document.getElementById("member-name-input");
+                        if (inp) inp.focus();
+                    } else if (memberCursor === 0) selectMember("__all__");
                     else selectMember(team.members[memberCursor - 1].id);
                 }
             }
@@ -2311,10 +2614,11 @@
                         setStatus(`Session ${d} deleted.`);
                     });
                 }
-            } else if (focusedPanel === "members" && !selectedDate) {
-                if (selectedMemberId) {
-                    const m = findMember(findTeam(selectedTeamId), selectedMemberId);
-                    if (m) openConfirm(`Delete member "${m.name}"?`, () => deleteMember(selectedTeamId, selectedMemberId));
+            } else if (focusedPanel === "members") {
+                const team = findTeam(selectedTeamId);
+                if (team && memberCursor >= 1 && team.members[memberCursor - 1]) {
+                    const m = team.members[memberCursor - 1];
+                    openConfirm(`Delete member "${m.name}"?`, () => deleteMember(selectedTeamId, m.id));
                 }
             }
             return;
@@ -2325,6 +2629,11 @@
             e.preventDefault();
             if (focusedPanel === "teams" && selectedTeamId) {
                 openRenameTeam(selectedTeamId);
+            } else if (focusedPanel === "members") {
+                const team = findTeam(selectedTeamId);
+                if (team && memberCursor >= 1 && team.members[memberCursor - 1]) {
+                    openRenameMember(selectedTeamId, team.members[memberCursor - 1].id);
+                }
             }
             return;
         }
@@ -2334,9 +2643,11 @@
     //  INIT
     // ═══════════════════════════════════════════════════════════════════
     loadDb();
+    if (selectedTeamId && !selectedMemberId) selectedMemberId = "__all__";
     renderMainPage();
     updateSessionToolbar();
     setStatus("Ready.");
+    window.addEventListener("resize", renderTeamConnector);
 </script>
 </body>
 </html>
