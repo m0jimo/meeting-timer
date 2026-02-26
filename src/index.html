@@ -2028,10 +2028,12 @@
         const teamEl = document.querySelector(`.team-item[data-id="${selectedTeamId}"]`);
         if (!teamEl) return;
 
-        // target: speaking member's row in panel-members, or All Users row
+        // target: speaking member (green), or selected member (yellow), or All Users row
         const targetEl = sessionSpeakerId
             ? (document.querySelector(`#panel-members .member-item[data-id="${sessionSpeakerId}"]`) || document.querySelector(".member-item.all-users"))
-            : document.querySelector(".member-item.all-users");
+            : selectedMemberId && selectedMemberId !== "__all__"
+                ? (document.querySelector(`#panel-members .member-item[data-id="${selectedMemberId}"]`) || document.querySelector(".member-item.all-users"))
+                : document.querySelector(".member-item.all-users");
         if (!targetEl) return;
 
         const winRect          = document.querySelector(".window").getBoundingClientRect();
@@ -2259,6 +2261,7 @@
             selectedMemberId = memberId;
             renderMembersPanel();
             renderStats();
+            renderTeamConnector();
         }
     }
 
