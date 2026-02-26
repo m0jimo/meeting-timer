@@ -878,6 +878,43 @@
             color: #000;
         }
 
+        .col-excl {
+            width: 36px;
+            text-align: center;
+        }
+
+        .col-excl .excl-btn {
+            font-family: var(--font-main);
+            font-size: 15px;
+            background: transparent;
+            color: var(--accent-red);
+            border: 1px solid transparent;
+            padding: 1px 4px;
+            cursor: pointer;
+            opacity: 0.5;
+        }
+
+        .col-excl .excl-btn:hover {
+            opacity: 1;
+            border-color: var(--accent-red);
+        }
+
+        tr.row-excluded .col-excl .excl-btn {
+            opacity: 1;
+            color: var(--accent-green);
+            border-color: transparent;
+        }
+
+        tr.row-excluded td {
+            opacity: 0.35;
+            text-decoration: line-through;
+        }
+
+        tr.row-excluded td.col-excl {
+            opacity: 1 !important;
+            text-decoration: none !important;
+        }
+
         .col-bool {
             width: 60px;
             text-align: center;
@@ -1235,6 +1272,7 @@
                             <tr>
                                 <th class="col-rank">#</th>
                                 <th class="col-btn"></th>
+                                <th class="col-excl"></th>
                                 <th class="col-name">NAME</th>
                                 <th class="col-time">TIME</th>
                                 <th class="col-bar">SHARE</th>
@@ -1563,10 +1601,11 @@
         let totalMs = 0, totalTurns = 0, datesActive = [];
         for (const [date, rows] of Object.entries(sessions)) {
             const row = rows.find(r => r.memberId === memberId);
-            if (row && (row.totalMs > 0 || row.turns > 0)) {
-                totalMs += row.totalMs;
+            if (row && !row.excluded && (row.totalMs > 0 || row.turns > 0 || row.lastStart)) {
+                const ms = getLiveMs(row);
+                totalMs += ms;
                 totalTurns += row.turns;
-                datesActive.push({date, ms: row.totalMs, turns: row.turns});
+                datesActive.push({date, ms, turns: row.turns});
             }
         }
         datesActive.sort((a, b) => b.date.localeCompare(a.date));
@@ -1774,7 +1813,7 @@
         let html = "";
         dates.forEach((d, i) => {
             const rows = getSessionRows(selectedTeamId, d);
-            const memberCount = rows.filter(r => r.totalMs > 0 || r.turns > 0).length;
+            const memberCount = rows.filter(r => !r.excluded && (r.totalMs > 0 || r.turns > 0)).length;
             const isSelected = d === selectedDate;
             const isCursor = i === dateCursor;
             html += `<div class="session-item ${isSelected ? "selected" : ""} ${isCursor ? "cursor" : ""}"
@@ -2204,44 +2243,49 @@
                 totalMs: 0,
                 turns: 0,
                 lastStart: null,
-                lastTalkTime: null
+                lastTalkTime: null,
+                excluded: false
             };
             return {...m, ...row, id: m.id};
         });
 
         const sorted = members;
 
-        const totalMs = sorted.reduce((s, m) => s + getLiveMs(m), 0) || 1;
+        const totalMs = sorted.filter(m => !m.excluded).reduce((s, m) => s + getLiveMs(m), 0) || 1;
 
         if (recordingCursor >= sorted.length) recordingCursor = Math.max(0, sorted.length - 1);
 
         if (sorted.length === 0) {
-            tbody.innerHTML = `<tr><td colspan="8" class="empty-state">[ No members ] – F6 = Add</td></tr>`;
+            tbody.innerHTML = `<tr><td colspan="9" class="empty-state">[ No members ] – F6 = Add</td></tr>`;
             return;
         }
 
         tbody.innerHTML = sorted.map((m, i) => {
+            const isExcluded = !!m.excluded;
             const ms = getLiveMs(m);
-            const pct = Math.round(ms / totalMs * 100);
+            const pct = isExcluded ? 0 : Math.round(ms / totalMs * 100);
             const isSpeaking = m.id === sessionSpeakerId;
             const isCursor = i === recordingCursor;
             const hasSpoken = m.turns > 0;
             const dot = isSpeaking ? `<span class="speaking-dot"></span>` : "";
 
             let rowClass = "";
-            if (isSpeaking && isCursor) rowClass = "row-speaking row-selected";
+            if (isExcluded) rowClass = "row-excluded";
+            else if (isSpeaking && isCursor) rowClass = "row-speaking row-selected";
             else if (isSpeaking) rowClass = "row-speaking";
             else if (isCursor) rowClass = "row-selected";
 
             const btnClass = isSpeaking ? "rec-btn is-speaking" : "rec-btn";
             const btnLabel = isSpeaking ? "[ STOP ]" : "[ START ]";
+            const exclLabel = isExcluded ? "[+]" : "[-]";
 
             return `<tr class="${rowClass}"
                 onclick="clickRecordingRow(${i}, '${m.id}')"
                 ondblclick="dblClickRecordingRow(${i}, '${m.id}')"
                 data-idx="${i}" data-id="${m.id}">
       <td class="col-rank">${i + 1}</td>
-      <td class="col-btn"><button class="${btnClass}" onclick="event.stopPropagation(); toggleRecordingRow(${i}, '${m.id}')">${btnLabel}</button></td>
+      <td class="col-btn">${isExcluded ? "" : `<button class="${btnClass}" onclick="event.stopPropagation(); toggleRecordingRow(${i}, '${m.id}')">${btnLabel}</button>`}</td>
+      <td class="col-excl"><button class="excl-btn" onclick="event.stopPropagation(); toggleExcludeRow('${m.id}')" title="${isExcluded ? "Re-enable member" : "Exclude from stats"}">${exclLabel}</button></td>
       <td class="col-name"><div class="name-cell">${dot}${escHtml(m.name)}</div></td>
       <td class="col-time">${fmtMs(ms)}</td>
       <td class="col-bar">
@@ -2296,6 +2340,20 @@
         } else {
             startSpeaker(memberId);
         }
+    }
+
+    function toggleExcludeRow(memberId) {
+        if (!selectedDate) return;
+        const row = ensureSessionRow(selectedTeamId, selectedDate, memberId);
+        row.excluded = !row.excluded;
+        if (row.excluded && sessionSpeakerId === memberId) {
+            stopCurrentSpeaker();
+        }
+        saveDb();
+        renderRecordingTable();
+        renderSessionsList();
+        renderStats();
+        renderTeamConnector();
     }
 
     // ═══════════════════════════════════════════════════════════════════
@@ -2374,22 +2432,16 @@
     function renderAllUsersStats(el, team) {
         const sessions = db.sessions[team.id] || {};
         const allDates = Object.keys(sessions).sort((a, b) => b.localeCompare(a));
-        let grandTotalMs = 0;
-        let grandTurns = 0;
-        allDates.forEach(d => {
-            const rows = sessions[d] || [];
-            rows.forEach(r => {
-                grandTotalMs += r.totalMs;
-                grandTurns += r.turns;
-            });
-        });
         const totalSessions = allDates.length;
-        const avgMs = totalSessions ? Math.round(grandTotalMs / totalSessions) : 0;
 
         const memberRows = team.members.map(m => {
             const s = getMemberStats(team.id, m.id);
             return {name: m.name, totalMs: s.totalMs, turns: s.totalTurns, sessions: s.datesActive.length};
         }).sort((a, b) => b.totalMs - a.totalMs);
+
+        const grandTotalMs = memberRows.reduce((s, m) => s + m.totalMs, 0);
+        const grandTurns = memberRows.reduce((s, m) => s + m.turns, 0);
+        const avgMs = totalSessions ? Math.round(grandTotalMs / totalSessions) : 0;
 
         const grandMs = grandTotalMs || 1;
 
