@@ -1583,6 +1583,7 @@
         renderRecordingInfoBar();
         renderRecordingTable();
         renderTeamConnector();
+        renderStats();
     }
 
     function startSpeaker(memberId) {
@@ -1605,6 +1606,7 @@
         renderRecordingInfoBar();
         renderRecordingTable();
         renderTeamConnector();
+        renderStats();
     }
 
     function updateSessionToolbar() {
@@ -2222,7 +2224,7 @@
             const btnLabel = isSpeaking ? "[ STOP ]" : "[ START ]";
 
             return `<tr class="${rowClass}"
-                onclick="clickRecordingRow(${i})"
+                onclick="clickRecordingRow(${i}, '${m.id}')"
                 ondblclick="dblClickRecordingRow(${i}, '${m.id}')"
                 data-idx="${i}" data-id="${m.id}">
       <td class="col-rank">${i + 1}</td>
@@ -2242,7 +2244,7 @@
         }).join("");
     }
 
-    function clickRecordingRow(idx) {
+    function clickRecordingRow(idx, memberId) {
         recordingCursor = idx;
         focusedPanel = "recording";
         highlightFocusedPanel();
@@ -2253,6 +2255,11 @@
                          : i === idx               ? "row-selected"
                          :                           "";
         });
+        if (memberId) {
+            selectedMemberId = memberId;
+            renderMembersPanel();
+            renderStats();
+        }
     }
 
     function dblClickRecordingRow(idx, memberId) {
@@ -2671,6 +2678,7 @@
         if (selectedDate && sessionSpeakerId) {
             renderRecordingTable();
             renderTeamConnector();
+            renderStats();
         }
     }
 
