@@ -8,9 +8,10 @@
     <link href="https://fonts.googleapis.com/css2?family=VT323&family=Share+Tech+Mono&display=swap" rel="stylesheet"/>
     <style>
         /* ═══════════════════════════════════════════════════════════════
-           DOS / TUI THEME  –  Norton / Volkov Commander Aesthetic
+           THEME: Norton Commander (default)
            ═══════════════════════════════════════════════════════════════ */
-        :root {
+        :root,
+        :root[data-theme="norton"] {
             --bg: #000080;
             --panel-bg: #000080;
             --panel-border: #00aaff;
@@ -44,6 +45,171 @@
             --accent-orange: #ffaa00;
             --font-main: 'VT323', monospace;
             --font-mono: 'Share Tech Mono', monospace;
+            --row-divider: #001050;
+            --stat-box-bg: #000050;
+            --scrollbar-track: #000030;
+            --scrollbar-thumb: #004488;
+            --scrollbar-thumb-border: #0066aa;
+            --pct-bar-bg: #000030;
+            --pct-bar-border: #003060;
+            --dialog-footer-border: #003366;
+            --table-th-border: #0066aa;
+            --table-td-border: #001050;
+            --row-active-selected-bg: #ffff00;
+            --row-active-selected-fg: #000000;
+        }
+
+        /* ═══════════════════════════════════════════════════════════════
+           THEME: Dark (black & white)
+           ═══════════════════════════════════════════════════════════════ */
+        :root[data-theme="dark"] {
+            --bg: #000000;
+            --panel-bg: #0a0a0a;
+            --panel-border: #444444;
+            --panel-title: #ffffff;
+            --row-bg: #0a0a0a;
+            --row-alt: #141414;
+            --row-hover: #222222;
+            --row-active: #555555;
+            --row-active-fg: #ffffff;
+            --row-selected: #333333;
+            --row-selected-fg: #ffffff;
+            --row-fg: #888888;
+            --row-fg-bright: #cccccc;
+            --header-bg: #222222;
+            --header-fg: #ffffff;
+            --status-bg: #111111;
+            --status-fg: #aaaaaa;
+            --btn-bg: #333333;
+            --btn-fg: #cccccc;
+            --btn-hover-bg: #555555;
+            --btn-active-bg: #777777;
+            --input-bg: #000000;
+            --input-fg: #ffffff;
+            --input-border: #555555;
+            --dialog-bg: #111111;
+            --dialog-border: #888888;
+            --accent-green: #aaaaaa;
+            --accent-yellow: #ffffff;
+            --accent-red: #cc4444;
+            --accent-cyan: #cccccc;
+            --accent-orange: #999999;
+            --font-main: 'VT323', monospace;
+            --font-mono: 'Share Tech Mono', monospace;
+            --row-divider: #1e1e1e;
+            --stat-box-bg: #111111;
+            --scrollbar-track: #000000;
+            --scrollbar-thumb: #333333;
+            --scrollbar-thumb-border: #555555;
+            --pct-bar-bg: #000000;
+            --pct-bar-border: #333333;
+            --dialog-footer-border: #333333;
+            --table-th-border: #555555;
+            --table-td-border: #1e1e1e;
+            --row-active-selected-bg: #888888;
+            --row-active-selected-fg: #ffffff;
+        }
+
+        /* ═══════════════════════════════════════════════════════════════
+           THEME: White (white & black)
+           ═══════════════════════════════════════════════════════════════ */
+        :root[data-theme="white"] {
+            --bg: #cccccc;
+            --panel-bg: #ffffff;
+            --panel-border: #888888;
+            --panel-title: #000000;
+            --row-bg: #ffffff;
+            --row-alt: #f0f0f0;
+            --row-hover: #dddddd;
+            --row-active: #777777;
+            --row-active-fg: #ffffff;
+            --row-selected: #444444;
+            --row-selected-fg: #ffffff;
+            --row-fg: #555555;
+            --row-fg-bright: #000000;
+            --header-bg: #444444;
+            --header-fg: #ffffff;
+            --status-bg: #dddddd;
+            --status-fg: #000000;
+            --btn-bg: #dddddd;
+            --btn-fg: #000000;
+            --btn-hover-bg: #ffffff;
+            --btn-active-bg: #aaaaaa;
+            --input-bg: #ffffff;
+            --input-fg: #000000;
+            --input-border: #888888;
+            --dialog-bg: #ffffff;
+            --dialog-border: #000000;
+            --accent-green: #333333;
+            --accent-yellow: #000000;
+            --accent-red: #cc0000;
+            --accent-cyan: #333333;
+            --accent-orange: #555555;
+            --font-main: 'VT323', monospace;
+            --font-mono: 'Share Tech Mono', monospace;
+            --row-divider: #cccccc;
+            --stat-box-bg: #f0f0f0;
+            --scrollbar-track: #dddddd;
+            --scrollbar-thumb: #aaaaaa;
+            --scrollbar-thumb-border: #888888;
+            --pct-bar-bg: #e0e0e0;
+            --pct-bar-border: #aaaaaa;
+            --dialog-footer-border: #cccccc;
+            --table-th-border: #888888;
+            --table-td-border: #cccccc;
+            --row-active-selected-bg: #000000;
+            --row-active-selected-fg: #ffffff;
+        }
+
+        /* ═══════════════════════════════════════════════════════════════
+           THEME: DOS Navigator
+           ═══════════════════════════════════════════════════════════════ */
+        :root[data-theme="dn"] {
+            --bg: #555555;
+            --panel-bg: #000080;
+            --panel-border: #008080;
+            --panel-title: #ffffff;
+            --row-bg: #000080;
+            --row-alt: #000070;
+            --row-hover: #005050;
+            --row-active: #008000;
+            --row-active-fg: #ffffff;
+            --row-selected: #008080;
+            --row-selected-fg: #ffffff;
+            --row-fg: #aaaaaa;
+            --row-fg-bright: #ffffff;
+            --header-bg: #008080;
+            --header-fg: #ffffff;
+            --status-bg: #aaaaaa;
+            --status-fg: #000000;
+            --btn-bg: #aaaaaa;
+            --btn-fg: #000000;
+            --btn-hover-bg: #cccccc;
+            --btn-active-bg: #55ffff;
+            --input-bg: #000000;
+            --input-fg: #55ffff;
+            --input-border: #aaaaaa;
+            --dialog-bg: #000080;
+            --dialog-border: #55ffff;
+            --accent-green: #55ff55;
+            --accent-yellow: #55ffff;
+            --accent-red: #ff5555;
+            --accent-cyan: #55ffff;
+            --accent-orange: #ffaa55;
+            --font-main: 'VT323', monospace;
+            --font-mono: 'Share Tech Mono', monospace;
+            --row-divider: #003060;
+            --stat-box-bg: #000060;
+            --scrollbar-track: #333333;
+            --scrollbar-thumb: #008080;
+            --scrollbar-thumb-border: #00aaaa;
+            --pct-bar-bg: #000040;
+            --pct-bar-border: #004060;
+            --dialog-footer-border: #004466;
+            --table-th-border: #00aaaa;
+            --table-td-border: #003060;
+            --row-active-selected-bg: #55ffff;
+            --row-active-selected-fg: #000000;
         }
 
         *, *::before, *::after {
@@ -263,7 +429,7 @@
         .team-item {
             padding: 4px 10px;
             cursor: pointer;
-            border-bottom: 1px solid #001050;
+            border-bottom: 1px solid var(--row-divider);
             display: flex;
             align-items: center;
             gap: 6px;
@@ -320,7 +486,7 @@
         .session-item {
             padding: 3px 10px;
             cursor: pointer;
-            border-bottom: 1px solid #001050;
+            border-bottom: 1px solid var(--row-divider);
             display: flex;
             align-items: center;
             gap: 6px;
@@ -413,7 +579,7 @@
         .member-item {
             padding: 3px 10px;
             cursor: pointer;
-            border-bottom: 1px solid #001050;
+            border-bottom: 1px solid var(--row-divider);
             display: flex;
             align-items: center;
             gap: 6px;
@@ -500,7 +666,7 @@
             padding: 6px 12px;
             min-width: 120px;
             text-align: center;
-            background: #000050;
+            background: var(--stat-box-bg);
         }
 
         .stat-box .lbl {
@@ -534,14 +700,14 @@
             color: var(--header-fg);
             padding: 2px 8px;
             text-align: left;
-            border-right: 1px solid #0066aa;
+            border-right: 1px solid var(--table-th-border);
             font-size: 15px;
         }
 
         .stats-sessions-table td {
             padding: 2px 8px;
-            border-bottom: 1px solid #001050;
-            border-right: 1px solid #001050;
+            border-bottom: 1px solid var(--table-td-border);
+            border-right: 1px solid var(--table-td-border);
             color: var(--row-fg-bright);
             font-family: var(--font-mono);
             font-size: 14px;
@@ -559,7 +725,7 @@
         }
 
         .recording-info-bar {
-            background: #000050;
+            background: var(--stat-box-bg);
             border-bottom: 1px solid var(--panel-border);
             padding: 3px 8px;
             display: flex;
@@ -604,7 +770,7 @@
         thead th {
             padding: 3px 10px;
             text-align: left;
-            border-right: 1px solid #0066aa;
+            border-right: 1px solid var(--table-th-border);
             font-size: 17px;
             letter-spacing: 1px;
             white-space: nowrap;
@@ -616,7 +782,7 @@
 
         tbody tr {
             background: var(--row-bg);
-            border-bottom: 1px solid #001050;
+            border-bottom: 1px solid var(--row-divider);
             cursor: pointer;
         }
 
@@ -645,13 +811,13 @@
         }
 
         tbody tr.row-selected.row-speaking {
-            background: var(--accent-yellow) !important;
-            color: #000 !important;
+            background: var(--row-active-selected-bg) !important;
+            color: var(--row-active-selected-fg) !important;
         }
 
         tbody td {
             padding: 3px 10px;
-            border-right: 1px solid #001050;
+            border-right: 1px solid var(--table-td-border);
             color: var(--row-fg-bright);
             white-space: nowrap;
         }
@@ -707,8 +873,8 @@
 
 
         .pct-bar-wrap {
-            background: #000030;
-            border: 1px solid #003060;
+            background: var(--pct-bar-bg);
+            border: 1px solid var(--pct-bar-border);
             height: 13px;
             position: relative;
         }
@@ -790,9 +956,21 @@
             font-size: 13px;
         }
 
+        .theme-btn {
+            font-size: 14px;
+            padding: 0 6px;
+            line-height: 1.4;
+            opacity: 0.75;
+            transition: opacity 0.15s;
+        }
+
+        .theme-btn:hover {
+            opacity: 1;
+        }
+
         .kb-hint span {
-            background: #005588;
-            color: #fff;
+            background: var(--row-selected);
+            color: var(--row-selected-fg);
             padding: 0 4px;
             margin-right: 2px;
         }
@@ -874,7 +1052,7 @@
             display: flex;
             gap: 8px;
             justify-content: flex-end;
-            border-top: 1px solid #003366;
+            border-top: 1px solid var(--dialog-footer-border);
         }
 
         .confirm-msg {
@@ -890,12 +1068,12 @@
         }
 
         ::-webkit-scrollbar-track {
-            background: #000030;
+            background: var(--scrollbar-track);
         }
 
         ::-webkit-scrollbar-thumb {
-            background: #004488;
-            border: 1px solid #0066aa;
+            background: var(--scrollbar-thumb);
+            border: 1px solid var(--scrollbar-thumb-border);
         }
 
         /* CRT scanlines */
@@ -1016,7 +1194,10 @@
             <span>Esc</span>Back
         </div>
         <div id="statusbar-msg" style="color:var(--accent-yellow);">Ready.</div>
-        <div id="statusbar-saved" style="color:#00aa00; font-size:14px;"></div>
+        <div style="display:flex;align-items:center;gap:6px;">
+            <div id="statusbar-saved" style="color:#00aa00; font-size:14px;"></div>
+            <button class="btn theme-btn" id="btn-theme" onclick="cycleTheme()" title="Switch theme">&#9670;</button>
+        </div>
     </div>
 
     <!-- SVG connector: selected team → All Users, drawn in window gutter -->
@@ -1089,7 +1270,7 @@
             <div style="color:var(--accent-cyan);font-size:17px;">
                 A retro DOS/TUI-styled meeting timer for tracking speaker time across team sessions.
             </div>
-            <div style="border-top:1px solid #003366;padding-top:8px;color:var(--accent-yellow);font-size:16px;letter-spacing:1px;">
+            <div style="border-top:1px solid var(--dialog-footer-border);padding-top:8px;color:var(--accent-yellow);font-size:16px;letter-spacing:1px;">
                 ══ KEYBOARD SHORTCUTS ══
             </div>
             <table style="width:100%;border-collapse:collapse;font-family:var(--font-mono);font-size:15px;">
@@ -1106,7 +1287,7 @@
                 <tr><td style="color:var(--accent-yellow);padding:2px 8px 2px 0;">Delete</td><td style="color:var(--row-fg-bright);">Delete selected item</td></tr>
                 <tr><td style="color:var(--accent-yellow);padding:2px 8px 2px 0;">Escape</td><td style="color:var(--row-fg-bright);">Back / close dialog</td></tr>
             </table>
-            <div style="border-top:1px solid #003366;padding-top:8px;display:flex;align-items:center;gap:12px;">
+            <div style="border-top:1px solid var(--dialog-footer-border);padding-top:8px;display:flex;align-items:center;gap:12px;">
                 <div style="font-family:var(--font-mono);font-size:10px;line-height:1.15;color:var(--accent-cyan);white-space:pre;letter-spacing:0.5px;"> _&#9608;___&#9608;_
 &#9608;&#9608; &#9600;&#9600;&#9600; &#9608;&#9608;
 &#9608; o   o &#9608;
@@ -1794,7 +1975,10 @@
         const xRail = tPanelLeft - 8;
 
         // colour: green when a speaker is active, yellow otherwise
-        const C  = sessionSpeakerId ? "#00ff00" : "#ffff00";
+        const style = getComputedStyle(document.documentElement);
+        const C = sessionSpeakerId
+            ? style.getPropertyValue("--accent-green").trim()
+            : style.getPropertyValue("--accent-yellow").trim();
         const ns = "http://www.w3.org/2000/svg";
         const W  = "3";
 
@@ -2640,9 +2824,35 @@
     });
 
     // ═══════════════════════════════════════════════════════════════════
+    //  THEME
+    // ═══════════════════════════════════════════════════════════════════
+    const THEMES = ["norton", "dn", "dark", "white"];
+    const THEME_LABELS = { norton: "NC", dn: "DN", dark: "BW", white: "WB" };
+    const THEME_NAMES = { norton: "Norton Commander", dn: "DOS Navigator", dark: "Dark", white: "White" };
+    const LS_THEME_KEY = "meeting-timer-theme";
+
+    let currentTheme = localStorage.getItem(LS_THEME_KEY) || "norton";
+
+    function applyTheme(theme) {
+        document.documentElement.setAttribute("data-theme", theme);
+        const btn = document.getElementById("btn-theme");
+        if (btn) btn.textContent = THEME_LABELS[theme] || "?";
+        localStorage.setItem(LS_THEME_KEY, theme);
+        renderTeamConnector();
+    }
+
+    function cycleTheme() {
+        const idx = THEMES.indexOf(currentTheme);
+        currentTheme = THEMES[(idx + 1) % THEMES.length];
+        applyTheme(currentTheme);
+        setStatus("Theme: " + (THEME_NAMES[currentTheme] || currentTheme));
+    }
+
+    // ═══════════════════════════════════════════════════════════════════
     //  INIT
     // ═══════════════════════════════════════════════════════════════════
     loadDb();
+    applyTheme(currentTheme);
     if (selectedTeamId && !selectedMemberId) selectedMemberId = "__all__";
     renderMainPage();
     updateSessionToolbar();
