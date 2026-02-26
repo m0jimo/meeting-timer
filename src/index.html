@@ -1436,6 +1436,7 @@
     let memberCursor = 0;    // member list panel (0 = All Users, 1..N = members)
     let recordingCursor = 0; // recording table panel
     let focusedPanel = "teams"; // 'teams' | 'dates' | 'recording' | 'members'
+    let mouseIsDown = false;
 
     // ── Misc ──
     let editingTeamId = null;
@@ -2682,12 +2683,15 @@
         document.getElementById("clock").textContent =
             now.toLocaleTimeString("en-GB", {hour: "2-digit", minute: "2-digit", second: "2-digit"});
 
-        if (selectedDate && sessionSpeakerId) {
+        if (selectedDate && sessionSpeakerId && !mouseIsDown) {
             renderRecordingTable();
             renderTeamConnector();
             renderStats();
         }
     }
+
+    document.addEventListener("mousedown", () => { mouseIsDown = true; });
+    document.addEventListener("mouseup", () => { mouseIsDown = false; });
 
     setInterval(tick, 500);
     tick();
