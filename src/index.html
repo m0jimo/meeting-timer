@@ -847,11 +847,29 @@
             font-size: 16px;
         }
 
-        .col-pct {
-            width: 66px;
-            text-align: right;
-            font-family: var(--font-mono);
-            font-size: 16px;
+        .col-btn {
+            width: 80px;
+            text-align: center;
+        }
+
+        .col-btn .rec-btn {
+            font-family: var(--font-main);
+            font-size: 15px;
+            background: var(--btn-bg);
+            color: var(--btn-fg);
+            border: 1px solid var(--panel-border);
+            padding: 1px 6px;
+            cursor: pointer;
+            white-space: nowrap;
+        }
+
+        .col-btn .rec-btn:hover {
+            background: var(--btn-hover-bg);
+        }
+
+        .col-btn .rec-btn.is-speaking {
+            background: var(--accent-yellow);
+            color: #000;
         }
 
         .col-bool {
@@ -891,6 +909,20 @@
 
         .row-speaking .pct-bar-fill {
             background: var(--accent-yellow);
+        }
+
+        .pct-bar-label {
+            position: absolute;
+            inset: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 11px;
+            font-family: var(--font-mono);
+            color: var(--row-fg-bright);
+            text-shadow: 0 0 3px #000, 0 0 3px #000;
+            pointer-events: none;
+            line-height: 1;
         }
 
         .name-cell {
@@ -1112,7 +1144,7 @@
             .stats-panel { width: 100%; flex: none; min-height: 0; overflow: visible; }
             .stats-content { overflow: visible; padding: 8px; }
 
-            .col-pct, .col-bar, .col-bool, .col-last { display: none; }
+            .col-bar, .col-bool, .col-last { display: none; }
             .recording-table-wrap { overflow-x: auto; }
 
             .team-item, .member-item, .session-item { padding: 10px 12px; min-height: 44px; }
@@ -1196,9 +1228,9 @@
                             <thead>
                             <tr>
                                 <th class="col-rank">#</th>
+                                <th class="col-btn"></th>
                                 <th class="col-name">NAME</th>
                                 <th class="col-time">TIME</th>
-                                <th class="col-pct">%</th>
                                 <th class="col-bar">SHARE</th>
                                 <th class="col-bool">SPOKE</th>
                                 <th class="col-turns">TURNS</th>
@@ -1752,7 +1784,7 @@
                 onclick="document.getElementById('session-date-input').focus()">
     <span style="color:#888;font-size:13px;margin-right:4px;">+</span>
     <input class="session-date-input" id="session-date-input"
-           value="${escHtml(inputVal)}" maxlength="10"
+           value="${escHtml(inputVal)}"
            onclick="event.stopPropagation()"
            onkeydown="sessionDateInputKeydown(event)"
            onfocus="onSessionDateInputFocus()"
@@ -1781,7 +1813,7 @@
             e.stopPropagation();
             const inp = document.getElementById("session-date-input");
             const val = inp ? inp.value.trim() : "";
-            if (/^\d{4}-\d{2}-\d{2}$/.test(val)) {
+            if (val.length > 0) {
                 newDateInputValue = null;
                 createAndSelectDate(val);
             } else {
@@ -2186,16 +2218,21 @@
             else if (isSpeaking) rowClass = "row-speaking";
             else if (isCursor) rowClass = "row-selected";
 
+            const btnClass = isSpeaking ? "rec-btn is-speaking" : "rec-btn";
+            const btnLabel = isSpeaking ? "[ STOP ]" : "[ START ]";
+
             return `<tr class="${rowClass}"
-                onclick="clickRecordingRow(${i}, '${m.id}')"
+                onclick="clickRecordingRow(${i})"
+                ondblclick="dblClickRecordingRow(${i}, '${m.id}')"
                 data-idx="${i}" data-id="${m.id}">
       <td class="col-rank">${i + 1}</td>
+      <td class="col-btn"><button class="${btnClass}" onclick="event.stopPropagation(); toggleRecordingRow(${i}, '${m.id}')">${btnLabel}</button></td>
       <td class="col-name"><div class="name-cell">${dot}${escHtml(m.name)}</div></td>
       <td class="col-time">${fmtMs(ms)}</td>
-      <td class="col-pct">${pct}%</td>
       <td class="col-bar">
         <div class="pct-bar-wrap">
           <div class="pct-bar-fill" style="width:${pct}%"></div>
+          <div class="pct-bar-label">${pct}%</div>
         </div>
       </td>
       <td class="col-bool">${hasSpoken ? "<span class=\"bool-yes\">▶ YES</span>" : "<span class=\"bool-no\">—</span>"}</td>
@@ -2205,11 +2242,39 @@
         }).join("");
     }
 
-    function clickRecordingRow(idx, memberId) {
+    function clickRecordingRow(idx) {
         recordingCursor = idx;
         focusedPanel = "recording";
         highlightFocusedPanel();
-        startSpeaker(memberId);
+        document.querySelectorAll("#recording-tbody tr").forEach((tr, i) => {
+            const isSpeaking = tr.dataset.id === sessionSpeakerId;
+            tr.className = isSpeaking && i === idx ? "row-speaking row-selected"
+                         : isSpeaking              ? "row-speaking"
+                         : i === idx               ? "row-selected"
+                         :                           "";
+        });
+    }
+
+    function dblClickRecordingRow(idx, memberId) {
+        recordingCursor = idx;
+        focusedPanel = "recording";
+        highlightFocusedPanel();
+        if (sessionSpeakerId === memberId) {
+            stopCurrentSpeaker();
+        } else {
+            startSpeaker(memberId);
+        }
+    }
+
+    function toggleRecordingRow(idx, memberId) {
+        recordingCursor = idx;
+        focusedPanel = "recording";
+        highlightFocusedPanel();
+        if (sessionSpeakerId === memberId) {
+            stopCurrentSpeaker();
+        } else {
+            startSpeaker(memberId);
+        }
     }
 
     // ═══════════════════════════════════════════════════════════════════
