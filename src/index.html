@@ -2037,6 +2037,7 @@
         if (!targetEl) return;
 
         const winRect          = document.querySelector(".window").getBoundingClientRect();
+        const contentRect      = document.querySelector(".content").getBoundingClientRect();
         const teamsPanelRect   = document.getElementById("panel-teams").getBoundingClientRect();
         const teamRect         = teamEl.getBoundingClientRect();
         const targetRect       = targetEl.getBoundingClientRect();
@@ -2047,6 +2048,9 @@
         const rb = (r) => r.bottom - winRect.top;
         const rl = (r) => r.left   - winRect.left;
 
+        const maxY = contentRect.bottom - winRect.top;
+        const clampY = (y) => Math.min(y, maxY);
+
         const tPanelLeft   = rl(teamsPanelRect);
         const targetPanelLeft = rl(targetPanelRect);
 
@@ -2054,9 +2058,9 @@
         const teamBot  = rb(teamRect);
         const teamMidY = (teamTop + teamBot) / 2;
 
-        const tgtTop   = ry(targetRect);
-        const tgtBot   = rb(targetRect);
-        const tgtMidY  = (tgtTop + tgtBot) / 2;
+        const tgtTop   = clampY(ry(targetRect));
+        const tgtBot   = clampY(rb(targetRect));
+        const tgtMidY  = clampY((ry(targetRect) + rb(targetRect)) / 2);
 
         // rail 8px into the gutter, left of the teams panel border
         const xRail = tPanelLeft - 8;
