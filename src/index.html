@@ -203,8 +203,8 @@
             --scrollbar-track: #333333;
             --scrollbar-thumb: #008080;
             --scrollbar-thumb-border: #00aaaa;
-            --pct-bar-bg: #000040;
-            --pct-bar-border: #004060;
+            --pct-bar-bg: #002020;
+            --pct-bar-border: #005050;
             --dialog-footer-border: #004466;
             --table-th-border: #00aaaa;
             --table-td-border: #003060;
@@ -266,7 +266,7 @@
 
         /* ── TOOLBAR ── */
         .toolbar {
-            background: var(--row-alt);
+            background: transparent;
             border-bottom: 1px solid var(--panel-border);
             padding: 4px 8px;
             display: flex;
@@ -543,15 +543,15 @@
 
 
         /* new-date row */
-        .session-item.session-new {
+        .session-item.session-new.cursor {
             color: var(--accent-green);
         }
 
         /* inline date input inside the new-date row */
         .session-date-input {
-            background: var(--input-bg);
-            color: var(--input-fg);
-            border: 1px solid var(--accent-green);
+            background: transparent;
+            color: var(--row-fg-bright);
+            border: 1px solid transparent;
             font-family: var(--font-mono);
             font-size: 15px;
             padding: 0 4px;
@@ -561,9 +561,9 @@
 
         /* inline name input for new team / new member rows */
         .inline-name-input {
-            background: var(--input-bg);
-            color: var(--input-fg);
-            border: 1px solid var(--accent-green);
+            background: transparent;
+            color: var(--row-fg-bright);
+            border: 1px solid transparent;
             font-family: var(--font-main);
             font-size: 19px;
             padding: 0 4px;
@@ -575,8 +575,19 @@
             font-size: 18px;
         }
 
-        .team-item.team-new, .member-item.member-new {
+        .team-item.team-new.cursor, .member-item.member-new.cursor,
+        .team-item.team-new:focus-within, .member-item.member-new:focus-within,
+        .session-item.session-new.cursor, .session-item.session-new:focus-within {
             color: var(--accent-green);
+        }
+
+        .team-item.team-new.cursor .inline-name-input,
+        .member-item.member-new.cursor .inline-name-input,
+        .session-item.session-new.cursor .session-date-input,
+        .inline-name-input:focus,
+        .session-date-input:focus {
+            color: var(--accent-green);
+            border-color: var(--accent-green);
         }
 
         /* ── Members panel (bottom-left in browse mode) ── */
@@ -689,7 +700,7 @@
             padding: 6px 12px;
             min-width: 120px;
             text-align: center;
-            background: var(--stat-box-bg);
+            background: transparent;
         }
 
         .stat-box .lbl {
@@ -734,10 +745,11 @@
             color: var(--row-fg-bright);
             font-family: var(--font-mono);
             font-size: 14px;
+            background: transparent;
         }
 
         .stats-sessions-table tr:nth-child(even) td {
-            background: var(--row-alt);
+            background: transparent;
         }
 
         .stats-placeholder {
@@ -748,7 +760,7 @@
         }
 
         .recording-info-bar {
-            background: var(--stat-box-bg);
+            background: transparent;
             border-bottom: 1px solid var(--panel-border);
             padding: 3px 8px;
             display: flex;
@@ -804,13 +816,13 @@
         }
 
         tbody tr {
-            background: var(--row-bg);
+            background: transparent;
             border-bottom: 1px solid var(--row-divider);
             cursor: pointer;
         }
 
         tbody tr:nth-child(even) {
-            background: var(--row-alt);
+            background: transparent;
         }
 
         tbody tr:hover {
@@ -1673,6 +1685,22 @@
         document.getElementById("btn-reset-session").disabled = !hasDate;
     }
 
+    function uniqueDefaultName(base, names, sep, startAlpha) {
+        if (!names.includes(base)) return base;
+        if (startAlpha) {
+            let code = startAlpha.charCodeAt(0);
+            let suffix = startAlpha;
+            while (names.includes(base + sep + suffix)) {
+                code++;
+                suffix = String.fromCharCode(code);
+            }
+            return base + sep + suffix;
+        }
+        let n = 2;
+        while (names.includes(base + sep + n)) n++;
+        return base + sep + n;
+    }
+
     // ═══════════════════════════════════════════════════════════════════
     //  CRUD — TEAMS
     // ═══════════════════════════════════════════════════════════════════
@@ -1840,7 +1868,7 @@
         // New-date row (last, index dates.length)
         const newRowIdx = dates.length;
         const newCursor = dateCursor === newRowIdx;
-        const inputVal = newDateInputValue !== null ? newDateInputValue : today;
+        const inputVal = newDateInputValue !== null ? newDateInputValue : uniqueDefaultName(today, dates, "-", "a");
         html += `<div class="session-item session-new ${newCursor ? "cursor" : ""}" id="session-new-row"
                 onclick="document.getElementById('session-date-input').focus()">
     <span style="color:#888;font-size:13px;margin-right:4px;">+</span>
@@ -2049,7 +2077,7 @@
         const el = document.getElementById("teams-list");
         const newRowIdx = db.teams.length;
         if (teamCursor > newRowIdx) teamCursor = newRowIdx;
-        const inputVal = newTeamInputValue !== null ? newTeamInputValue : "Team name";
+        const inputVal = newTeamInputValue !== null ? newTeamInputValue : uniqueDefaultName("Team name", db.teams.map(t => t.name), " ");
         const rows = db.teams.map((t, i) => {
             const sel = t.id === selectedTeamId;
             const isCursor = i === teamCursor;
@@ -2215,7 +2243,7 @@
       </div>`;
         }).join("");
         const newMemberCursor = memberCursor === newMemberRowIdx;
-        const memberInputVal = newMemberInputValue !== null ? newMemberInputValue : "Member name";
+        const memberInputVal = newMemberInputValue !== null ? newMemberInputValue : uniqueDefaultName("Member name", (findTeam(selectedTeamId) || {members: []}).members.map(m => m.name), " ");
         const newMemberRow = `<div class="member-item member-new ${newMemberCursor ? "cursor" : ""}" id="member-new-row"
                    onclick="document.getElementById('member-name-input').focus()">
         <span style="color:#888;font-size:13px;margin-right:4px;">+</span>
